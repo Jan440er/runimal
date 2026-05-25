@@ -11,7 +11,6 @@ let lastPosition = null;
 let animalsCollected = 0;
 let nextRewardDistance = 0.1; 
 
-// NEU: Variablen für die Karte
 let map = null;
 let userMarker = null;
 
@@ -31,7 +30,6 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 function collectAnimal() {
     const randomAnimal = animals[Math.floor(Math.random() * animals.length)];
     
-    // Tier zur Liste hinzufügen
     const li = document.createElement('li');
     li.className = 'animal-item';
     li.textContent = randomAnimal;
@@ -40,7 +38,6 @@ function collectAnimal() {
     animalsCollected++;
     animalCountDisplay.textContent = animalsCollected;
 
-    // NEU: Das gefundene Tier als Marker auf der Karte platzieren
     if (map && lastPosition) {
         const animalIcon = L.divIcon({
             html: `<div>${randomAnimal}</div>`,
@@ -52,19 +49,22 @@ function collectAnimal() {
     }
 }
 
-// NEU: Initialisiert die Karte beim ersten GPS-Signal
-function initOrUpdateMap(lat, lng) {
+// NEU: Funktion, die die Karte sofort beim Start lädt
+function initDefaultMap() {
     if (!map) {
-        // Karte erstellen und auf aktuelle Position zentrieren
-        map = L.map('map', { zoomControl: false }).setView([lat, lng], 16);
+        // Startposition: grob über Deutschland, Zoom-Level 6
+        map = L.map('map', { zoomControl: false }).setView([51.1657, 10.4515], 6);
         
-        // OpenStreetMap Kacheln laden
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '© OpenStreetMap'
         }).addTo(map);
+    }
+}
 
-        // Einen blauen Kreis für den Spieler erstellen
+// NEU: Angepasste Funktion, die den Marker setzt und heranzoomt
+function updateMapLocation(lat, lng) {
+    if (!userMarker) {
         userMarker = L.circleMarker([lat, lng], {
             radius: 8,
             fillColor: "#007AFF",
@@ -74,10 +74,10 @@ function initOrUpdateMap(lat, lng) {
             fillOpacity: 1
         }).addTo(map);
     } else {
-        // Spieler-Marker und Kartenzentrum aktualisieren
         userMarker.setLatLng([lat, lng]);
-        map.panTo([lat, lng]);
     }
+    // NEU: SetView nutzt jetzt Zoomlevel 16, sobald GPS da ist
+    map.setView([lat, lng], 16); 
 }
 
 function startTracking() {
@@ -98,8 +98,8 @@ function startTracking() {
 
             const { latitude, longitude } = position.coords;
             
-            // NEU: Karte aufrufen / aktualisieren
-            initOrUpdateMap(latitude, longitude);
+            // NEU: Aktualisiert die Karte mit der exakten Position
+            updateMapLocation(latitude, longitude);
 
             if (lastPosition) {
                 const dist = calculateDistance(
@@ -120,10 +120,16 @@ function startTracking() {
             lastPosition = { latitude, longitude };
         },
         (error) => {
-            statusDisplay.textContent = "GPS Fehler!";
+            // NEU: Detailliertere Fehlermeldungen für leichteres Debugging
+            let errorMsg = "GPS Fehler!";
+            if (error.code === 1) errorMsg = "GPS abgelehnt!"; // Rechte verweigert oder kein HTTPS
+            if (error.code === 2) errorMsg = "Kein Signal!";   // Position nicht verfügbar
+            if (error.code === 3) errorMsg = "Timeout!";       // Zu lange gedauert
+            
+            statusDisplay.textContent = errorMsg;
             statusDisplay.style.color = "red";
         },
-        { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 } // NEU: Timeout leicht erhöht
     );
 }
 
@@ -140,3 +146,6 @@ function stopTracking() {
 
 startBtn.addEventListener('click', startTracking);
 stopBtn.addEventListener('click', stopTracking);
+
+// NEU: Karte direkt beim Laden der Seite initialisieren
+initDefaultMap();

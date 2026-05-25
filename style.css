@@ -1,3 +1,4 @@
+/* Keine funktionalen Änderungen in dieser Datei für dieses Update */
 :root {
     --primary: #4CAF50;
     --danger: #f44336;
@@ -12,12 +13,10 @@
 }
 
 body {
-    /* NEU: Hintergrundfarbe entfernt, da die Karte den Hintergrund bildet */
     color: var(--text);
-    overflow: hidden; /* Verhindert Scrollen der ganzen Seite */
+    overflow: hidden; 
 }
 
-/* NEU: Vollbild-Karte im Hintergrund */
 #map {
     position: fixed;
     top: 0;
@@ -27,7 +26,6 @@ body {
     z-index: 0;
 }
 
-/* NEU: Schwebendes, modernes Glassmorphism-UI */
 .ui-layer {
     position: relative;
     z-index: 10;
@@ -37,10 +35,9 @@ body {
     height: 100vh;
     display: flex;
     flex-direction: column;
-    pointer-events: none; /* Klicks gehen durch das UI auf die Karte... */
+    pointer-events: none; 
 }
 
-/* NEU: ...aber die UI-Elemente selbst bleiben klickbar */
 header, .stats-card, .controls, .collection-area {
     pointer-events: auto; 
 }
@@ -48,7 +45,6 @@ header, .stats-card, .controls, .collection-area {
 header {
     text-align: center;
     margin-bottom: 20px;
-    /* NEU: Textschatten für bessere Lesbarkeit über der Karte */
     text-shadow: 0 2px 4px rgba(255,255,255,0.8); 
 }
 
@@ -57,7 +53,6 @@ h1 {
     color: var(--primary);
 }
 
-/* NEU: Modernerer Glas-Effekt für die Boxen */
 .stats-card {
     background: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(10px);
@@ -97,7 +92,7 @@ h1 {
     flex: 1;
     padding: 15px;
     border: none;
-    border-radius: 12px; /* NEU: Rundere Ecken */
+    border-radius: 12px;
     font-size: 1.1rem;
     font-weight: bold;
     color: white;
@@ -119,7 +114,6 @@ h1 {
 .btn.primary { background-color: var(--primary); }
 .btn.danger { background-color: var(--danger); }
 
-/* NEU: Die Sammel-Area scrollbar machen, damit sie nicht aus dem Bildschirm wächst */
 .collection-area {
     background: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(10px);
@@ -155,7 +149,6 @@ h1 {
     animation: popIn 0.3s ease-out;
 }
 
-/* NEU: Styling für die Tier-Marker direkt auf der Karte */
 .animal-map-marker {
     background: white;
     border-radius: 50%;
