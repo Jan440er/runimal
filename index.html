@@ -4,13 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>RunSafari - Sammle Tiere!</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="app-container">
+    <div id="map"></div>
+
+    <div class="ui-layer">
         <header>
             <h1>🏃🏽‍♂️ RunSafari</h1>
-            <p>Lauf los und entdecke Tiere!</p>
         </header>
 
         <main>
@@ -26,18 +29,19 @@
             </div>
 
             <div class="controls">
-                <button id="startBtn" class="btn primary">Lauf starten</button>
-                <button id="stopBtn" class="btn danger" disabled>Beenden</button>
+                <button id="startBtn" class="btn primary">Start</button>
+                <button id="stopBtn" class="btn danger" disabled>Stopp</button>
             </div>
 
             <section class="collection-area">
-                <h2>Deine Sammlung (<span id="animalCount">0</span>)</h2>
+                <h2>Sammlung (<span id="animalCount">0</span>)</h2>
                 <ul id="collectionList" class="animal-grid">
                     </ul>
             </section>
         </main>
     </div>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
