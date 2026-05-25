@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>RunSafari - Sammle Tiere!</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <h1>🏃🏽‍♂️ RunSafari</h1>
+            <p>Lauf los und entdecke Tiere!</p>
+        </header>
+
+        <main>
+            <div class="stats-card">
+                <div class="stat">
+                    <span class="label">Distanz</span>
+                    <span class="value"><span id="distance">0.00</span> km</span>
+                </div>
+                <div class="stat">
+                    <span class="label">Status</span>
+                    <span class="value" id="status">Bereit</span>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button id="startBtn" class="btn primary">Lauf starten</button>
+                <button id="stopBtn" class="btn danger" disabled>Beenden</button>
+            </div>
+
+            <section class="collection-area">
+                <h2>Deine Sammlung (<span id="animalCount">0</span>)</h2>
+                <ul id="collectionList" class="animal-grid">
+                    </ul>
+            </section>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

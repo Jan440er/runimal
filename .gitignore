@@ -1,0 +1,4 @@
+# NEU: Git Ignore Datei
+.DS_Store
+.vscode/
+node_modules/
