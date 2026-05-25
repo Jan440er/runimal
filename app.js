@@ -21,7 +21,6 @@ const collectionList = document.getElementById('collectionList');
 const animalCountDisplay = document.getElementById('animalCount');
 const runsList = document.getElementById('runsList');
 
-// NEU: Profil UI Elemente
 const boxCountDisplay = document.getElementById('boxCountDisplay');
 const openBoxBtn = document.getElementById('openBoxBtn');
 const boxResult = document.getElementById('boxResult');
@@ -50,7 +49,6 @@ window.updateHomeUI = function() {
     
     runs.forEach(run => {
         const li = document.createElement('li');
-        // NEU: Zeige die im Lauf gesammelten Tiere an
         const animalsHtml = run.animals && run.animals.length > 0 
             ? `<div class="run-animals">Gezogen: ${run.animals.join(' ')}</div>` 
             : `<div class="run-animals" style="color:#aaa; font-size: 0.9rem;">Keine Tiere gezogen</div>`;
@@ -70,39 +68,34 @@ window.updateHomeUI = function() {
     }
 }
 
-// NEU: Funktion zum Aktualisieren der Boxen-Ansicht
 window.updateProfileUI = function() {
     const boxes = Storage.getBoxes();
     boxCountDisplay.textContent = boxes.length;
     openBoxBtn.disabled = boxes.length === 0;
 }
 
-// NEU: Logik zum Öffnen einer Box
 openBoxBtn.addEventListener('click', () => {
     const runId = Storage.consumeBox();
-    if (!runId) return; // Sicherheitshalber
+    if (!runId) return; 
 
-    // Gacha Mechanismus: Zufallszahl zwischen 0 und 100
     const rand = Math.random() * 100;
     let currentProbability = 0;
     let drawnAnimal = null;
     let drawnRarity = null;
 
-    for (let r of RARITIES) {
+    // NEU: Greift nun sicher auf Storage.RARITIES zu
+    for (let r of Storage.RARITIES) {
         currentProbability += r.chance;
         if (rand <= currentProbability) {
-            // Tier aus dieser Seltenheitsstufe wählen
             drawnAnimal = r.animals[Math.floor(Math.random() * r.animals.length)];
             drawnRarity = r;
             break;
         }
     }
 
-    // Speichern
     Storage.saveAnimal(drawnAnimal);
     Storage.addAnimalToRun(runId, drawnAnimal);
 
-    // Ergebnis anzeigen
     boxResult.innerHTML = `
         <div class="animal-item" style="border: 3px solid ${drawnRarity.color}; display: inline-block; padding: 20px; transform: scale(1.2);">
             ${drawnAnimal}
@@ -112,20 +105,19 @@ openBoxBtn.addEventListener('click', () => {
         </div>
     `;
 
-    // UI Updates
     updateProfileUI();
     updateHomeUI();
 });
 
-// NEU: Info Card (Wahrscheinlichkeiten) Toggle Logik
+// NEU: Toggle-Mechanik repariert (Prüft jetzt children.length statt innerHTML)
 toggleInfoBtn.addEventListener('click', () => {
     if (infoCard.style.display === 'none') {
         infoCard.style.display = 'block';
         toggleInfoBtn.textContent = '📊 Wahrscheinlichkeiten ausblenden';
         
-        // Liste aufbauen, falls noch leer
-        if (rarityList.innerHTML === '') {
-            RARITIES.forEach(r => {
+        // NEU: Verhindert Fehlschlagen durch Kommentare/Whitespaces
+        if (rarityList.children.length === 0) {
+            Storage.RARITIES.forEach(r => {
                 const li = document.createElement('li');
                 li.className = 'rarity-row';
                 li.innerHTML = `
