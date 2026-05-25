@@ -24,7 +24,8 @@ const Storage = {
         return data ? JSON.parse(data) : [];
     },
 
-    saveRun: (distance, timeStr, speed) => {
+    // NEU: Parameter erweitert, um Pace, Route (GPS-Punkte) und Splits abzuspeichern
+    saveRun: (distance, timeStr, paceStr, route, splits) => {
         const runs = Storage.getRuns();
         const runId = Date.now();
         const newRun = {
@@ -32,7 +33,9 @@ const Storage = {
             date: new Date().toLocaleDateString('de-DE'),
             distance: distance,
             time: timeStr,
-            speed: speed,
+            pace: paceStr,   // NEU: Speichert Pace statt km/h
+            route: route,   // NEU: Speichert Array von [lat, lng]
+            splits: splits, // NEU: Speichert Array von Zeiten pro Kilometer
             animals: [] 
         };
         runs.unshift(newRun); 

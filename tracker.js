@@ -9,7 +9,7 @@ let watchId = null;
 let totalDistance = 0; 
 let lastPosition = null;
 
-// NEU: Distanz für die erste Box auf 0.05 (50 Meter) geändert
+// Distanz für Boxen auf 0.05 (50 Meter) gesetzt
 let nextRewardDistance = 0.05; 
 let boxesEarnedThisRun = 0; 
 
@@ -21,6 +21,13 @@ let timerInterval = null;
 let elapsedSeconds = 0;
 
 let wakeLock = null;
+
+// NEU: Variablen für Routen-Linie und Kilometer-Splits
+let trackingPolyline = null;
+let routeCoords = [];
+let nextSplitDistance = 1.0;
+let lastSplitTime = 0;
+let splits = [];
 
 function calculateDistance(lat1, lon1, lat2, lon2) {
     const R = 6371; 
@@ -39,14 +46,24 @@ function formatTime(seconds) {
     return `${m}:${s}`;
 }
 
+// NEU: Timer berechnet nun die Läufer-Pace (min/km) statt km/h
 function updateTimer() {
     elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
     timeDisplay.textContent = formatTime(elapsedSeconds);
 
     if (elapsedSeconds > 0 && totalDistance > 0) {
-        const hours = elapsedSeconds / 3600;
-        const speed = totalDistance / hours;
-        speedDisplay.textContent = speed.toFixed(1);
+        const totalMinutes = elapsedSeconds / 60;
+        const paceDecimal = totalMinutes / totalDistance;
+        const paceMins = Math.floor(paceDecimal);
+        const paceSecs = Math.floor((paceDecimal - paceMins) * 60).toString().padStart(2, '0');
+        
+        if (paceMins < 100) {
+            speedDisplay.textContent = `${paceMins}:${paceSecs}`;
+        } else {
+            speedDisplay.textContent = "--:--";
+        }
+    } else {
+        speedDisplay.textContent = "00:00";
     }
 }
 
@@ -118,13 +135,24 @@ function startTracking() {
 
     totalDistance = 0;
     elapsedSeconds = 0;
-    // NEU: Reset-Wert auf 50 Meter angepasst
     nextRewardDistance = 0.05; 
     boxesEarnedThisRun = 0;   
     distanceDisplay.textContent = "0.00";
     timeDisplay.textContent = "00:00";
-    speedDisplay.textContent = "0.0";
+    speedDisplay.textContent = "00:00"; // NEU: Pace Startwert
     
+    // NEU: Tracker Variablen zurücksetzen
+    routeCoords = [];
+    nextSplitDistance = 1.0;
+    lastSplitTime = 0;
+    splits = [];
+    
+    if (trackingPolyline) {
+        map.removeLayer(trackingPolyline);
+    }
+    // NEU: Polyline initialisieren, um den Weg auf der Karte zu zeichnen
+    trackingPolyline = L.polyline([], {color: '#4CAF50', weight: 5, opacity: 0.8}).addTo(map);
+
     startBtn.disabled = true;
     stopBtn.disabled = false;
     statusDisplay.textContent = "Sucht GPS...";
@@ -143,6 +171,10 @@ function startTracking() {
             const { latitude, longitude } = position.coords;
             updateMapLocation(latitude, longitude);
 
+            // NEU: Aktuelle GPS-Koordinate in Route sichern und Linie live updaten
+            routeCoords.push([latitude, longitude]);
+            trackingPolyline.setLatLngs(routeCoords);
+
             if (lastPosition) {
                 const dist = calculateDistance(
                     lastPosition.latitude, lastPosition.longitude,
@@ -156,8 +188,15 @@ function startTracking() {
                     if (totalDistance >= nextRewardDistance) {
                         boxesEarnedThisRun++;
                         spawnBoxOnMap(latitude, longitude);
-                        // NEU: Nächste Box in 50 Metern (0.05 km)
                         nextRewardDistance += 0.05; 
+                    }
+
+                    // NEU: Wenn ein voller Kilometer erreicht wurde, Split berechnen
+                    if (totalDistance >= nextSplitDistance) {
+                        const splitTimeSeconds = elapsedSeconds - lastSplitTime;
+                        splits.push(formatTime(splitTimeSeconds));
+                        lastSplitTime = elapsedSeconds;
+                        nextSplitDistance += 1.0;
                     }
                     
                     lastPosition = { latitude, longitude };
@@ -195,10 +234,26 @@ function stopTracking() {
     releaseWakeLock();
 
     if (totalDistance > 0.01) {
+        // NEU: Letzten angefangenen Kilometer als Rest-Split berechnen
+        let finalSplits = [...splits];
+        const coveredInCurrentKm = totalDistance - (nextSplitDistance - 1.0);
+        if (coveredInCurrentKm > 0.03) { 
+            const splitTimeSeconds = elapsedSeconds - lastSplitTime;
+            const paceDecimal = (splitTimeSeconds / 60) / coveredInCurrentKm;
+            if (isFinite(paceDecimal) && paceDecimal < 100) {
+                const pMins = Math.floor(paceDecimal);
+                const pSecs = Math.floor((paceDecimal - pMins) * 60).toString().padStart(2, '0');
+                finalSplits.push(`${pMins}:${pSecs} (Rest)`);
+            }
+        }
+
+        // NEU: Übergabe von Pace, Routen-Koordinaten und Splits an den Storage
         const runId = Storage.saveRun(
             totalDistance.toFixed(2), 
             timeDisplay.textContent, 
-            speedDisplay.textContent
+            speedDisplay.textContent,
+            routeCoords,
+            finalSplits
         );
         
         if (boxesEarnedThisRun > 0) {

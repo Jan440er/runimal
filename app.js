@@ -47,19 +47,73 @@ window.updateHomeUI = function() {
     const runs = Storage.getRuns();
     runsList.innerHTML = '';
     
+    // NEU: Rendert Läufe als ausklappbares Accordion inklusive Karte und Splits
     runs.forEach(run => {
         const li = document.createElement('li');
+        li.className = 'run-item-clickable';
+        
         const animalsHtml = run.animals && run.animals.length > 0 
             ? `<div class="run-animals">Gezogen: ${run.animals.join(' ')}</div>` 
             : `<div class="run-animals" style="color:#aaa; font-size: 0.9rem;">Keine Tiere gezogen</div>`;
 
+        // Splits HTML Struktur aufbauen
+        let splitsHtml = '<p><strong>⏱️ Kilometer-Splits:</strong></p><ul class="splits-list">';
+        if (run.splits && run.splits.length > 0) {
+            run.splits.forEach((splitTime, index) => {
+                splitsHtml += `<li><span>Kilometer ${index + 1}:</span> <strong>${splitTime} min/km</strong></li>`;
+            });
+        } else {
+            splitsHtml += '<li>Keine Splits aufgezeichnet (Lauf zu kurz).</li>';
+        }
+        splitsHtml += '</ul>';
+
+        // Listen-Inhalt zusammensetzen (Pace statt km/h)
         li.innerHTML = `
             <div class="run-header">
                 <span class="run-date">${run.date}</span>
-                <span class="run-stats">${run.distance} km • ${run.time} • ${run.speed} km/h</span>
+                <span class="run-stats">${run.distance} km • ${run.time} • ${run.pace} min/km</span>
             </div>
             ${animalsHtml}
+            <div class="run-details">
+                ${splitsHtml}
+                <div class="run-map" id="map-${run.id}"></div>
+            </div>
         `;
+        
+        // Klick-Logik zum Öffnen/Schließen und Laden der Leaflet Route
+        li.addEventListener('click', (e) => {
+            if (e.target.closest('.run-map')) return; // Klicks auf Karte ignorieren
+
+            const isExpanded = li.classList.toggle('expanded');
+            
+            if (isExpanded) {
+                setTimeout(() => {
+                    const runMapId = `map-${run.id}`;
+                    const mapContainer = document.getElementById(runMapId);
+                    
+                    // Verhindert doppelte Karten-Initialisierung
+                    if (mapContainer && !mapContainer._leaflet_id) {
+                        if (run.route && run.route.length > 0) {
+                            const subMap = L.map(runMapId, { zoomControl: false });
+                            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                                maxZoom: 19
+                            }).addTo(subMap);
+                            
+                            // Route einzeichnen
+                            const polyline = L.polyline(run.route, {color: '#4CAF50', weight: 4}).addTo(subMap);
+                            subMap.fitBounds(polyline.getBounds(), { padding: [15, 15] });
+                            
+                            // Start- & Zielmarker setzen
+                            L.circleMarker(run.route[0], {radius: 5, fillColor: '#4CAF50', color: '#fff', weight: 2, fillOpacity: 1}).addTo(subMap);
+                            L.circleMarker(run.route[run.route.length - 1], {radius: 5, fillColor: '#f44336', color: '#fff', weight: 2, fillOpacity: 1}).addTo(subMap);
+                        } else {
+                            mapContainer.innerHTML = '<p style="padding: 10px; color: #888; font-size: 0.85rem;">Keine Routenpunkte vorhanden.</p>';
+                        }
+                    }
+                }, 50);
+            }
+        });
+
         runsList.appendChild(li);
     });
 
@@ -83,7 +137,6 @@ openBoxBtn.addEventListener('click', () => {
     let drawnAnimal = null;
     let drawnRarity = null;
 
-    // NEU: Greift nun sicher auf Storage.RARITIES zu
     for (let r of Storage.RARITIES) {
         currentProbability += r.chance;
         if (rand <= currentProbability) {
@@ -109,13 +162,11 @@ openBoxBtn.addEventListener('click', () => {
     updateHomeUI();
 });
 
-// NEU: Toggle-Mechanik repariert (Prüft jetzt children.length statt innerHTML)
 toggleInfoBtn.addEventListener('click', () => {
     if (infoCard.style.display === 'none') {
         infoCard.style.display = 'block';
         toggleInfoBtn.textContent = '📊 Wahrscheinlichkeiten ausblenden';
         
-        // NEU: Verhindert Fehlschlagen durch Kommentare/Whitespaces
         if (rarityList.children.length === 0) {
             Storage.RARITIES.forEach(r => {
                 const li = document.createElement('li');
