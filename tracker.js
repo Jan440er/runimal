@@ -9,9 +9,9 @@ let watchId = null;
 let totalDistance = 0; 
 let lastPosition = null;
 
-// NEU: Distanz für Boxen auf 0.5 (500 Meter) gesetzt
-let nextRewardDistance = 0.5; 
-let boxesEarnedThisRun = 0; // Zählt gesammelte Boxen im aktuellen Lauf
+// NEU: Distanz für die erste Box auf 0.05 (50 Meter) geändert
+let nextRewardDistance = 0.05; 
+let boxesEarnedThisRun = 0; 
 
 let map = null;
 let userMarker = null;
@@ -19,6 +19,8 @@ let userMarker = null;
 let startTime = null;
 let timerInterval = null;
 let elapsedSeconds = 0;
+
+let wakeLock = null;
 
 function calculateDistance(lat1, lon1, lat2, lon2) {
     const R = 6371; 
@@ -48,7 +50,6 @@ function updateTimer() {
     }
 }
 
-// NEU: Spawnt jetzt eine Box 📦 auf der Karte, kein Tier mehr
 function spawnBoxOnMap(lat, lng) {
     if (map) {
         const boxIcon = L.divIcon({
@@ -82,6 +83,33 @@ function updateMapLocation(lat, lng) {
     map.setView([lat, lng], 16); 
 }
 
+async function requestWakeLock() {
+    try {
+        if ('wakeLock' in navigator) {
+            wakeLock = await navigator.wakeLock.request('screen');
+            console.log('Wake Lock aktiv - Display bleibt an');
+            
+            document.addEventListener('visibilitychange', async () => {
+                if (wakeLock !== null && document.visibilityState === 'visible') {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                }
+            });
+        }
+    } catch (err) {
+        console.log(`Wake Lock Fehler: ${err.name}, ${err.message}`);
+    }
+}
+
+function releaseWakeLock() {
+    if (wakeLock !== null) {
+        wakeLock.release()
+            .then(() => {
+                wakeLock = null;
+                console.log('Wake Lock freigegeben');
+            });
+    }
+}
+
 function startTracking() {
     if (!navigator.geolocation) {
         statusDisplay.textContent = "GPS nicht unterstützt!";
@@ -90,8 +118,9 @@ function startTracking() {
 
     totalDistance = 0;
     elapsedSeconds = 0;
-    nextRewardDistance = 0.5; // NEU: 500 Meter
-    boxesEarnedThisRun = 0;   // NEU: Counter reset
+    // NEU: Reset-Wert auf 50 Meter angepasst
+    nextRewardDistance = 0.05; 
+    boxesEarnedThisRun = 0;   
     distanceDisplay.textContent = "0.00";
     timeDisplay.textContent = "00:00";
     speedDisplay.textContent = "0.0";
@@ -103,6 +132,8 @@ function startTracking() {
 
     startTime = Date.now();
     timerInterval = setInterval(updateTimer, 1000);
+
+    requestWakeLock();
 
     watchId = navigator.geolocation.watchPosition(
         (position) => {
@@ -118,19 +149,22 @@ function startTracking() {
                     latitude, longitude
                 );
                 
-                if (dist > 0.002) {
+                if (dist > 0.005) {
                     totalDistance += dist;
                     distanceDisplay.textContent = totalDistance.toFixed(2);
 
-                    // NEU: Boxen-Meilenstein erreicht
                     if (totalDistance >= nextRewardDistance) {
                         boxesEarnedThisRun++;
                         spawnBoxOnMap(latitude, longitude);
-                        nextRewardDistance += 0.5; // Nächste Box in 500 Metern
+                        // NEU: Nächste Box in 50 Metern (0.05 km)
+                        nextRewardDistance += 0.05; 
                     }
+                    
+                    lastPosition = { latitude, longitude };
                 }
+            } else {
+                lastPosition = { latitude, longitude };
             }
-            lastPosition = { latitude, longitude };
         },
         (error) => {
             let errorMsg = "GPS Fehler!";
@@ -158,20 +192,19 @@ function stopTracking() {
     stopBtn.disabled = true;
     lastPosition = null;
 
+    releaseWakeLock();
+
     if (totalDistance > 0.01) {
-        // NEU: Lauf speichern und die ID erhalten
         const runId = Storage.saveRun(
             totalDistance.toFixed(2), 
             timeDisplay.textContent, 
             speedDisplay.textContent
         );
         
-        // NEU: Gesammelte Boxen mit dem Lauf verknüpfen
         if (boxesEarnedThisRun > 0) {
             Storage.saveBoxes(runId, boxesEarnedThisRun);
         }
 
-        // NEU: Feedback an den Nutzer
         alert(`Lauf beendet! Du hast ${boxesEarnedThisRun} Box(en) gesammelt! Öffne sie im Inventar.`);
         statusDisplay.textContent = "Gespeichert!";
         statusDisplay.style.color = "var(--primary)";
