@@ -11,37 +11,92 @@
 <body>
     <div id="map"></div>
 
-    <div class="ui-layer">
-        <header>
-            <h1>🏃🏽‍♂️ RunSafari</h1>
-        </header>
+    <div class="app-content">
+        
+        <section id="view-home" class="view">
+            <header>
+                <h1>🏃🏽‍♂️ RunSafari</h1>
+                <p>Willkommen zurück!</p>
+            </header>
+            
+            <div class="home-content">
+                <section class="recent-runs">
+                    <h2>Letzte Läufe</h2>
+                    <ul id="runsList" class="list-group">
+                        </ul>
+                </section>
 
-        <main>
-            <div class="stats-card">
-                <div class="stat">
-                    <span class="label">Distanz</span>
-                    <span class="value"><span id="distance">0.00</span> km</span>
+                <section class="collection-area">
+                    <h2>Deine Sammlung (<span id="animalCount">0</span>)</h2>
+                    <ul id="collectionList" class="animal-grid">
+                        </ul>
+                </section>
+            </div>
+        </section>
+
+        <section id="view-track" class="view active">
+            <div class="ui-layer">
+                <div class="stats-card">
+                    <div class="stat">
+                        <span class="label">Distanz</span>
+                        <span class="value"><span id="distance">0.00</span> km</span>
+                    </div>
+                    <div class="stat">
+                        <span class="label">Zeit</span>
+                        <span class="value" id="time">00:00</span>
+                    </div>
+                    <div class="stat">
+                        <span class="label">Ø km/h</span>
+                        <span class="value" id="speed">0.0</span>
+                    </div>
                 </div>
-                <div class="stat">
-                    <span class="label">Status</span>
-                    <span class="value" id="status">Bereit</span>
+
+                <div class="status-bar" id="status">Bereit</div>
+
+                <div class="controls">
+                    <button id="startBtn" class="btn primary">Start</button>
+                    <button id="stopBtn" class="btn danger" disabled>Stopp</button>
                 </div>
             </div>
+        </section>
 
-            <div class="controls">
-                <button id="startBtn" class="btn primary">Start</button>
-                <button id="stopBtn" class="btn danger" disabled>Stopp</button>
+        <section id="view-profile" class="view">
+            <header>
+                <h1>📦 Inventar</h1>
+                <p>Öffne deine gesammelten Boxen!</p>
+            </header>
+            
+            <div class="profile-content">
+                <div class="box-status stats-card" style="flex-direction: column; align-items: center; gap: 15px;">
+                    <h2>Verfügbare Boxen: <span id="boxCountDisplay" style="color: var(--primary); font-size: 1.5rem;">0</span></h2>
+                    <button id="openBoxBtn" class="btn primary" style="width: 100%;">Eine Box öffnen</button>
+                </div>
+
+                <div id="boxResult" class="box-result">
+                    </div>
+
+                <div class="info-card-toggle" style="margin-top: 30px;">
+                    <button id="toggleInfoBtn" class="btn" style="background: #ddd; color: #333; width: 100%;">📊 Wahrscheinlichkeiten ansehen</button>
+                </div>
+                
+                <div id="infoCard" class="info-card" style="display: none; margin-top: 15px;">
+                    <ul id="rarityList" class="list-group">
+                        </ul>
+                </div>
             </div>
+        </section>
 
-            <section class="collection-area">
-                <h2>Sammlung (<span id="animalCount">0</span>)</h2>
-                <ul id="collectionList" class="animal-grid">
-                    </ul>
-            </section>
-        </main>
     </div>
 
+    <nav class="bottom-nav">
+        <button class="nav-item" data-target="view-home">🏠<br>Home</button>
+        <button class="nav-item active" data-target="view-track">📍<br>Tracken</button>
+        <button class="nav-item" data-target="view-profile">📦<br>Boxen</button>
+    </nav>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="storage.js"></script>
+    <script src="tracker.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

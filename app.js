@@ -1,151 +1,145 @@
-const startBtn = document.getElementById('startBtn');
-const stopBtn = document.getElementById('stopBtn');
-const distanceDisplay = document.getElementById('distance');
-const statusDisplay = document.getElementById('status');
+const navItems = document.querySelectorAll('.nav-item');
+const views = document.querySelectorAll('.view');
+
+navItems.forEach(item => {
+    item.addEventListener('click', () => {
+        navItems.forEach(nav => nav.classList.remove('active'));
+        item.classList.add('active');
+
+        views.forEach(view => view.classList.remove('active'));
+        
+        const targetId = item.getAttribute('data-target');
+        document.getElementById(targetId).classList.add('active');
+        
+        if(targetId === 'view-track' && typeof map !== 'undefined' && map !== null) {
+            setTimeout(() => { map.invalidateSize(); }, 100);
+        }
+    });
+});
+
 const collectionList = document.getElementById('collectionList');
 const animalCountDisplay = document.getElementById('animalCount');
+const runsList = document.getElementById('runsList');
 
-let watchId = null;
-let totalDistance = 0; 
-let lastPosition = null;
-let animalsCollected = 0;
-let nextRewardDistance = 0.1; 
+// NEU: Profil UI Elemente
+const boxCountDisplay = document.getElementById('boxCountDisplay');
+const openBoxBtn = document.getElementById('openBoxBtn');
+const boxResult = document.getElementById('boxResult');
+const toggleInfoBtn = document.getElementById('toggleInfoBtn');
+const infoCard = document.getElementById('infoCard');
+const rarityList = document.getElementById('rarityList');
 
-let map = null;
-let userMarker = null;
-
-const animals = ['🦊', '🦉', '🐗', '🦌', '🦅', '🐻', '🐰', '🦔', '🐿️', '🐸'];
-
-function calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371; 
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-        Math.sin(dLat/2) * Math.sin(dLat/2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
-}
-
-function collectAnimal() {
-    const randomAnimal = animals[Math.floor(Math.random() * animals.length)];
+window.updateHomeUI = function() {
+    const animals = Storage.getAnimals();
+    animalCountDisplay.textContent = animals.length;
     
-    const li = document.createElement('li');
-    li.className = 'animal-item';
-    li.textContent = randomAnimal;
-    collectionList.prepend(li); 
+    collectionList.innerHTML = '';
+    animals.forEach(animal => {
+        const li = document.createElement('li');
+        li.className = 'animal-item';
+        li.textContent = animal;
+        collectionList.appendChild(li);
+    });
 
-    animalsCollected++;
-    animalCountDisplay.textContent = animalsCollected;
+    if (animals.length === 0) {
+        collectionList.innerHTML = '<li style="grid-column: 1/-1; text-align: left; background: none; box-shadow: none;">Noch keine Tiere. Öffne Boxen!</li>';
+    }
 
-    if (map && lastPosition) {
-        const animalIcon = L.divIcon({
-            html: `<div>${randomAnimal}</div>`,
-            className: 'animal-map-marker',
-            iconSize: [34, 34],
-            iconAnchor: [17, 17]
-        });
-        L.marker([lastPosition.latitude, lastPosition.longitude], {icon: animalIcon}).addTo(map);
+    const runs = Storage.getRuns();
+    runsList.innerHTML = '';
+    
+    runs.forEach(run => {
+        const li = document.createElement('li');
+        // NEU: Zeige die im Lauf gesammelten Tiere an
+        const animalsHtml = run.animals && run.animals.length > 0 
+            ? `<div class="run-animals">Gezogen: ${run.animals.join(' ')}</div>` 
+            : `<div class="run-animals" style="color:#aaa; font-size: 0.9rem;">Keine Tiere gezogen</div>`;
+
+        li.innerHTML = `
+            <div class="run-header">
+                <span class="run-date">${run.date}</span>
+                <span class="run-stats">${run.distance} km • ${run.time} • ${run.speed} km/h</span>
+            </div>
+            ${animalsHtml}
+        `;
+        runsList.appendChild(li);
+    });
+
+    if (runs.length === 0) {
+        runsList.innerHTML = '<li style="color: #777;">Bisher keine Läufe aufgezeichnet.</li>';
     }
 }
 
-// NEU: Funktion, die die Karte sofort beim Start lädt
-function initDefaultMap() {
-    if (!map) {
-        // Startposition: grob über Deutschland, Zoom-Level 6
-        map = L.map('map', { zoomControl: false }).setView([51.1657, 10.4515], 6);
+// NEU: Funktion zum Aktualisieren der Boxen-Ansicht
+window.updateProfileUI = function() {
+    const boxes = Storage.getBoxes();
+    boxCountDisplay.textContent = boxes.length;
+    openBoxBtn.disabled = boxes.length === 0;
+}
+
+// NEU: Logik zum Öffnen einer Box
+openBoxBtn.addEventListener('click', () => {
+    const runId = Storage.consumeBox();
+    if (!runId) return; // Sicherheitshalber
+
+    // Gacha Mechanismus: Zufallszahl zwischen 0 und 100
+    const rand = Math.random() * 100;
+    let currentProbability = 0;
+    let drawnAnimal = null;
+    let drawnRarity = null;
+
+    for (let r of RARITIES) {
+        currentProbability += r.chance;
+        if (rand <= currentProbability) {
+            // Tier aus dieser Seltenheitsstufe wählen
+            drawnAnimal = r.animals[Math.floor(Math.random() * r.animals.length)];
+            drawnRarity = r;
+            break;
+        }
+    }
+
+    // Speichern
+    Storage.saveAnimal(drawnAnimal);
+    Storage.addAnimalToRun(runId, drawnAnimal);
+
+    // Ergebnis anzeigen
+    boxResult.innerHTML = `
+        <div class="animal-item" style="border: 3px solid ${drawnRarity.color}; display: inline-block; padding: 20px; transform: scale(1.2);">
+            ${drawnAnimal}
+            <div style="font-size: 0.9rem; color: ${drawnRarity.color}; margin-top: 5px; font-weight: bold;">
+                ${drawnRarity.name}
+            </div>
+        </div>
+    `;
+
+    // UI Updates
+    updateProfileUI();
+    updateHomeUI();
+});
+
+// NEU: Info Card (Wahrscheinlichkeiten) Toggle Logik
+toggleInfoBtn.addEventListener('click', () => {
+    if (infoCard.style.display === 'none') {
+        infoCard.style.display = 'block';
+        toggleInfoBtn.textContent = '📊 Wahrscheinlichkeiten ausblenden';
         
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap'
-        }).addTo(map);
-    }
-}
-
-// NEU: Angepasste Funktion, die den Marker setzt und heranzoomt
-function updateMapLocation(lat, lng) {
-    if (!userMarker) {
-        userMarker = L.circleMarker([lat, lng], {
-            radius: 8,
-            fillColor: "#007AFF",
-            color: "#ffffff",
-            weight: 3,
-            opacity: 1,
-            fillOpacity: 1
-        }).addTo(map);
+        // Liste aufbauen, falls noch leer
+        if (rarityList.innerHTML === '') {
+            RARITIES.forEach(r => {
+                const li = document.createElement('li');
+                li.className = 'rarity-row';
+                li.innerHTML = `
+                    <span class="rarity-chance" style="color: ${r.color}">${r.name} (${r.chance}%)</span>
+                    <span class="rarity-animals">${r.animals.join(' ')}</span>
+                `;
+                rarityList.appendChild(li);
+            });
+        }
     } else {
-        userMarker.setLatLng([lat, lng]);
+        infoCard.style.display = 'none';
+        toggleInfoBtn.textContent = '📊 Wahrscheinlichkeiten ansehen';
     }
-    // NEU: SetView nutzt jetzt Zoomlevel 16, sobald GPS da ist
-    map.setView([lat, lng], 16); 
-}
+});
 
-function startTracking() {
-    if (!navigator.geolocation) {
-        statusDisplay.textContent = "GPS nicht unterstützt!";
-        return;
-    }
-
-    startBtn.disabled = true;
-    stopBtn.disabled = false;
-    statusDisplay.textContent = "Sucht GPS...";
-    statusDisplay.style.color = "orange";
-
-    watchId = navigator.geolocation.watchPosition(
-        (position) => {
-            statusDisplay.textContent = "Tracking aktiv";
-            statusDisplay.style.color = "green";
-
-            const { latitude, longitude } = position.coords;
-            
-            // NEU: Aktualisiert die Karte mit der exakten Position
-            updateMapLocation(latitude, longitude);
-
-            if (lastPosition) {
-                const dist = calculateDistance(
-                    lastPosition.latitude, lastPosition.longitude,
-                    latitude, longitude
-                );
-                
-                if (dist > 0.002) {
-                    totalDistance += dist;
-                    distanceDisplay.textContent = totalDistance.toFixed(2);
-
-                    if (totalDistance >= nextRewardDistance) {
-                        collectAnimal();
-                        nextRewardDistance += 0.1; 
-                    }
-                }
-            }
-            lastPosition = { latitude, longitude };
-        },
-        (error) => {
-            // NEU: Detailliertere Fehlermeldungen für leichteres Debugging
-            let errorMsg = "GPS Fehler!";
-            if (error.code === 1) errorMsg = "GPS abgelehnt!"; // Rechte verweigert oder kein HTTPS
-            if (error.code === 2) errorMsg = "Kein Signal!";   // Position nicht verfügbar
-            if (error.code === 3) errorMsg = "Timeout!";       // Zu lange gedauert
-            
-            statusDisplay.textContent = errorMsg;
-            statusDisplay.style.color = "red";
-        },
-        { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 } // NEU: Timeout leicht erhöht
-    );
-}
-
-function stopTracking() {
-    if (watchId) {
-        navigator.geolocation.clearWatch(watchId);
-        watchId = null;
-    }
-    startBtn.disabled = false;
-    stopBtn.disabled = true;
-    statusDisplay.textContent = "Pausiert";
-    statusDisplay.style.color = "black";
-}
-
-startBtn.addEventListener('click', startTracking);
-stopBtn.addEventListener('click', stopTracking);
-
-// NEU: Karte direkt beim Laden der Seite initialisieren
-initDefaultMap();
+window.updateHomeUI();
+window.updateProfileUI();
