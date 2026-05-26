@@ -1,11 +1,10 @@
 const startBtn = document.getElementById('startBtn');
-const pauseBtn = document.getElementById('pauseBtn'); // NEU
+const pauseBtn = document.getElementById('pauseBtn'); 
 const stopBtn = document.getElementById('stopBtn');
-const distanceDisplay = document.getElementById('distance');
-const timeDisplay = document.getElementById('time');
-const speedDisplay = document.getElementById('speed');
 const statusDisplay = document.getElementById('status');
 
+// NEU: Eigene Variablen für die interne Berechnung (anstatt UI Auslesung)
+let currentPaceString = "00:00";
 let watchId = null;
 let totalDistance = 0; 
 let lastPosition = null;
@@ -22,16 +21,14 @@ let elapsedSeconds = 0;
 
 let wakeLock = null;
 
-// NEU: Erweiterte Variablen für Segmente und Pausen
 let trackingPolyline = null;
-let mapLayers = []; // Speichert alle gezeichneten Linien (Aktiv + Pausen)
+let mapLayers = []; 
 let routeSegments = []; 
 let currentSegment = []; 
 let nextSplitDistance = 1.0;
 let lastSplitTime = 0;
 let splits = [];
 
-// NEU: Pausen-Zustand
 let isPaused = false;
 let pauseStartTime = null;
 let totalPauseMs = 0;
@@ -54,13 +51,54 @@ function formatTime(seconds) {
     return `${m}:${s}`;
 }
 
+// NEU: Diese globale Funktion rendert die Daten dynamisch nach den Nutzerwünschen
+window.renderStats = function() {
+    const settings = Storage.getSettings();
+    
+    // Berechnungen anhand der Körperdaten
+    const burnedKcal = Math.round(settings.weight * totalDistance * 1.036);
+    // Flüssigkeitsbedarf: ca 8ml pro KG pro Stunde Sport 
+    const fluidNeed = Math.round(settings.weight * 8 * (elapsedSeconds / 3600));
+
+    // Alle möglichen Anzeige-Strings formatieren
+    const statsData = { 
+        'distance': `${totalDistance.toFixed(2)} km`, 
+        'time': formatTime(elapsedSeconds), 
+        'pace': currentPaceString, 
+        'kcal': `${burnedKcal} kcal`, 
+        'fluid': `${fluidNeed} ml` 
+    };
+    
+    // Die Bezeichnungen
+    const statsLabels = { 
+        'distance': 'Distanz', 
+        'time': 'Zeit', 
+        'pace': 'Ø Pace', 
+        'kcal': 'Kalorien', 
+        'fluid': 'Wasserbedarf' 
+    };
+
+    // Die drei Slots überschreiben
+    document.getElementById('stat1-label').textContent = statsLabels[settings.stat1];
+    document.getElementById('stat1-value').textContent = statsData[settings.stat1];
+    
+    document.getElementById('stat2-label').textContent = statsLabels[settings.stat2];
+    document.getElementById('stat2-value').textContent = statsData[settings.stat2];
+    
+    document.getElementById('stat3-label').textContent = statsLabels[settings.stat3];
+    document.getElementById('stat3-value').textContent = statsData[settings.stat3];
+};
+
 function updateTimer() {
-    if (isPaused) return; // NEU: Timer-UI friert während der Pause ein
+    if (isPaused) {
+        const currentPauseSecs = Math.floor((Date.now() - pauseStartTime) / 1000);
+        statusDisplay.textContent = `Pausiert (${formatTime(currentPauseSecs)})`;
+        return; 
+    }
 
-    // NEU: Pausenzeit wird von der Gesamtzeit abgezogen
     elapsedSeconds = Math.floor((Date.now() - startTime - totalPauseMs) / 1000);
-    timeDisplay.textContent = formatTime(elapsedSeconds);
 
+    // NEU: Pace hier intern berechnen, wird aber erst in renderStats aufs UI gebracht
     if (elapsedSeconds > 0 && totalDistance > 0) {
         const totalMinutes = elapsedSeconds / 60;
         const paceDecimal = totalMinutes / totalDistance;
@@ -68,13 +106,15 @@ function updateTimer() {
         const paceSecs = Math.floor((paceDecimal - paceMins) * 60).toString().padStart(2, '0');
         
         if (paceMins < 100) {
-            speedDisplay.textContent = `${paceMins}:${paceSecs}`;
+            currentPaceString = `${paceMins}:${paceSecs}`;
         } else {
-            speedDisplay.textContent = "--:--";
+            currentPaceString = "--:--";
         }
     } else {
-        speedDisplay.textContent = "00:00";
+        currentPaceString = "00:00";
     }
+
+    window.renderStats(); // UI Updaten
 }
 
 function spawnBoxOnMap(lat, lng) {
@@ -131,7 +171,6 @@ function releaseWakeLock() {
     }
 }
 
-// NEU: Extrahiert in eigene Funktion für Start & Weiter
 function bindGeolocationWatch() {
     return navigator.geolocation.watchPosition(
         (position) => {
@@ -141,9 +180,7 @@ function bindGeolocationWatch() {
             const { latitude, longitude } = position.coords;
             updateMapLocation(latitude, longitude);
 
-            // NEU: Überprüft, ob dies der erste Punkt nach einer Pause ist
             if (currentSegment.length === 0 && lastPosition) {
-                // Zeichne die Luftlinie der Pause
                 const pauseStartCoord = [lastPosition.latitude, lastPosition.longitude];
                 const pauseEndCoord = [latitude, longitude];
                 
@@ -155,18 +192,15 @@ function bindGeolocationWatch() {
                     mapLayers.push(pauseLine);
                 }
                 
-                // Neue Polyline für den aktiven Track starten
                 trackingPolyline = L.polyline([], {color: '#4CAF50', weight: 5, opacity: 0.8}).addTo(map);
                 mapLayers.push(trackingPolyline);
 
-                // Verhindert Distanzberechnung für den Pausen-Sprung
                 lastPosition = { latitude, longitude };
                 currentSegment.push([latitude, longitude]);
                 trackingPolyline.setLatLngs(currentSegment);
                 return; 
             }
 
-            // Normales Hinzufügen der Punkte in das aktive Segment
             currentSegment.push([latitude, longitude]);
             if (!trackingPolyline) {
                 trackingPolyline = L.polyline([], {color: '#4CAF50', weight: 5, opacity: 0.8}).addTo(map);
@@ -182,8 +216,7 @@ function bindGeolocationWatch() {
                 
                 if (dist > 0.005) {
                     totalDistance += dist;
-                    distanceDisplay.textContent = totalDistance.toFixed(2);
-
+                    
                     if (totalDistance >= nextRewardDistance) {
                         boxesEarnedThisRun++;
                         spawnBoxOnMap(latitude, longitude);
@@ -196,6 +229,9 @@ function bindGeolocationWatch() {
                         lastSplitTime = elapsedSeconds;
                         nextSplitDistance += 1.0;
                     }
+
+                    // NEU: Sichergehen, dass das UI nach der Distanzerhöhung geupdatet wird
+                    window.renderStats(); 
                 }
             } 
             lastPosition = { latitude, longitude };
@@ -218,16 +254,21 @@ function startTracking() {
         return;
     }
 
-    // Zurücksetzen aller Werte
+    document.body.classList.add('tracking-active');
+    
+    setTimeout(() => {
+        if (map) map.invalidateSize();
+    }, 350);
+
+    // NEU: Interne Basiswerte nullen
     totalDistance = 0;
     elapsedSeconds = 0;
+    currentPaceString = "00:00"; 
     nextRewardDistance = 0.05; 
     boxesEarnedThisRun = 0;   
-    distanceDisplay.textContent = "0.00";
-    timeDisplay.textContent = "00:00";
-    speedDisplay.textContent = "00:00";
     
-    // NEU: Tracker Variablen & Pausen zurücksetzen
+    window.renderStats(); // Nullen sofort auf das UI bringen
+    
     routeSegments = [];
     currentSegment = [];
     nextSplitDistance = 1.0;
@@ -238,12 +279,10 @@ function startTracking() {
     pauses = [];
     lastPosition = null;
     
-    // NEU: Alte Linien von der Karte löschen
     mapLayers.forEach(layer => map.removeLayer(layer));
     mapLayers = [];
     trackingPolyline = null;
 
-    // NEU: UI Buttons umschalten
     startBtn.style.display = 'none';
     pauseBtn.style.display = 'block';
     pauseBtn.textContent = 'Pause';
@@ -259,48 +298,59 @@ function startTracking() {
     watchId = bindGeolocationWatch();
 }
 
-// NEU: Funktion für das Pausieren und Fortsetzen
 function togglePauseTracking() {
     if (!isPaused) {
-        // Pausieren
         isPaused = true;
         pauseStartTime = Date.now();
         
-        statusDisplay.textContent = "Pausiert";
+        statusDisplay.textContent = "Pausiert (00:00)";
         statusDisplay.style.color = "orange";
         pauseBtn.textContent = "Weiter";
         
-        // GPS Stoppen
         if (watchId) {
             navigator.geolocation.clearWatch(watchId);
             watchId = null;
         }
         
-        // Aktuelles Segment abspeichern und vorbereiten für neuen Track
         if (currentSegment.length > 0) {
             routeSegments.push({ type: 'active', coords: [...currentSegment] });
-            currentSegment = []; // Zurücksetzen für nach der Pause
+            currentSegment = []; 
         }
     } else {
-        // Weiterlaufen
         isPaused = false;
         const pauseDurationMs = Date.now() - pauseStartTime;
         totalPauseMs += pauseDurationMs;
         
         pauses.push({
-            duration: formatTime(Math.floor(pauseDurationMs / 1000))
+            duration: formatTime(Math.floor(pauseDurationMs / 1000)),
+            km: totalDistance.toFixed(2) 
         });
         
         statusDisplay.textContent = "Sucht GPS...";
         statusDisplay.style.color = "orange";
         pauseBtn.textContent = "Pause";
         
-        // GPS wieder starten
         watchId = bindGeolocationWatch();
     }
 }
 
 function stopTracking() {
+    document.body.classList.remove('tracking-active');
+    
+    setTimeout(() => {
+        if (map) map.invalidateSize();
+    }, 350);
+
+    if (isPaused) {
+        const pauseDurationMs = Date.now() - pauseStartTime;
+        totalPauseMs += pauseDurationMs;
+        pauses.push({
+            duration: formatTime(Math.floor(pauseDurationMs / 1000)),
+            km: totalDistance.toFixed(2)
+        });
+        isPaused = false;
+    }
+
     if (watchId) {
         navigator.geolocation.clearWatch(watchId);
         watchId = null;
@@ -310,12 +360,10 @@ function stopTracking() {
         timerInterval = null;
     }
 
-    // NEU: Falls der Lauf gestoppt wird, während noch ein Segment offen ist
     if (currentSegment.length > 0) {
         routeSegments.push({ type: 'active', coords: [...currentSegment] });
     }
 
-    // NEU: UI zurücksetzen
     startBtn.style.display = 'block';
     pauseBtn.style.display = 'none';
     stopBtn.disabled = true;
@@ -336,12 +384,13 @@ function stopTracking() {
             }
         }
 
-        // NEU: Pausen-Informationen an die Storage-Methode übergeben
         const totalPauseTimeStr = formatTime(Math.floor(totalPauseMs / 1000));
+        
+        // NEU: Wir übergeben die rohen Werte, unabhängig davon, ob sie im UI gerade sichtbar waren
         const runId = Storage.saveRun(
             totalDistance.toFixed(2), 
-            timeDisplay.textContent, 
-            speedDisplay.textContent,
+            formatTime(elapsedSeconds), 
+            currentPaceString,
             routeSegments, 
             finalSplits,
             totalPauseTimeStr,
@@ -365,7 +414,7 @@ function stopTracking() {
 }
 
 startBtn.addEventListener('click', startTracking);
-pauseBtn.addEventListener('click', togglePauseTracking); // NEU
+pauseBtn.addEventListener('click', togglePauseTracking); 
 stopBtn.addEventListener('click', stopTracking);
 
 initDefaultMap();

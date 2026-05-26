@@ -7,6 +7,23 @@ const Storage = {
         { name: 'Legendär', chance: 1, animals: ['🦄', '🐉', '🦖', '🦣', '🦁'], color: '#ff9800' }
     ],
 
+    // NEU: Funktionen für Benutzer-Einstellungen
+    getSettings: () => {
+        const data = localStorage.getItem('runSafariSettings');
+        return data ? JSON.parse(data) : {
+            weight: 75,
+            height: 175,
+            stat1: 'distance',
+            stat2: 'time',
+            stat3: 'pace'
+        };
+    },
+
+    // NEU
+    saveSettings: (settingsObj) => {
+        localStorage.setItem('runSafariSettings', JSON.stringify(settingsObj));
+    },
+
     getAnimals: () => {
         const data = localStorage.getItem('runSafariAnimals');
         return data ? JSON.parse(data) : [];
@@ -23,20 +40,25 @@ const Storage = {
         return data ? JSON.parse(data) : [];
     },
 
-    // NEU: Nimmt nun routeSegments (Array mit Aktiv/Pause-Typ), totalPauseTime und pauses entgegen
     saveRun: (distance, timeStr, paceStr, routeSegments, splits, totalPauseTime, pauses) => {
         const runs = Storage.getRuns();
         const runId = Date.now();
+        
+        const now = new Date();
+        const timeStrExact = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
+        const dateStrExact = `${now.getDate()}.${now.getMonth() + 1}.${now.getFullYear()}`;
+        const exactDateTime = `${timeStrExact} ${dateStrExact}`;
+
         const newRun = {
             id: runId,
-            date: new Date().toLocaleDateString('de-DE'),
+            date: exactDateTime, 
             distance: distance,
             time: timeStr,
             pace: paceStr,   
-            routeSegments: routeSegments, // NEU: Speichert das strukturierte Segmente-Array
+            routeSegments: routeSegments, 
             splits: splits,
-            totalPauseTime: totalPauseTime, // NEU: Gesamte Pausenzeit als String
-            pauses: pauses, // NEU: Array der einzelnen Pausenzeiten
+            totalPauseTime: totalPauseTime, 
+            pauses: pauses, 
             animals: [] 
         };
         runs.unshift(newRun); 

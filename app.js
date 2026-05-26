@@ -11,6 +11,12 @@ navItems.forEach(item => {
         const targetId = item.getAttribute('data-target');
         document.getElementById(targetId).classList.add('active');
         
+        if (targetId !== 'view-runs') {
+            document.querySelectorAll('.run-item-clickable').forEach(runItem => {
+                runItem.classList.remove('expanded');
+            });
+        }
+
         if(targetId === 'view-track' && typeof map !== 'undefined' && map !== null) {
             setTimeout(() => { map.invalidateSize(); }, 100);
         }
@@ -28,6 +34,43 @@ const toggleInfoBtn = document.getElementById('toggleInfoBtn');
 const infoCard = document.getElementById('infoCard');
 const rarityList = document.getElementById('rarityList');
 
+// NEU: Referenzen und Logik für die Einstellungen (Settings)
+const weightInput = document.getElementById('setting-weight');
+const heightInput = document.getElementById('setting-height');
+const stat1Select = document.getElementById('setting-stat1');
+const stat2Select = document.getElementById('setting-stat2');
+const stat3Select = document.getElementById('setting-stat3');
+
+function loadAndApplySettings() {
+    const s = Storage.getSettings();
+    weightInput.value = s.weight;
+    heightInput.value = s.height;
+    stat1Select.value = s.stat1;
+    stat2Select.value = s.stat2;
+    stat3Select.value = s.stat3;
+    
+    // UI Update triggern (sofern Tracker schon initialisiert ist)
+    if(typeof window.renderStats === 'function') window.renderStats();
+}
+
+function handleSettingsChange() {
+    const newSettings = {
+        weight: parseFloat(weightInput.value) || 75,
+        height: parseFloat(heightInput.value) || 175,
+        stat1: stat1Select.value,
+        stat2: stat2Select.value,
+        stat3: stat3Select.value
+    };
+    Storage.saveSettings(newSettings);
+    if(typeof window.renderStats === 'function') window.renderStats();
+}
+
+[weightInput, heightInput, stat1Select, stat2Select, stat3Select].forEach(el => {
+    el.addEventListener('change', handleSettingsChange);
+    el.addEventListener('input', handleSettingsChange);
+});
+
+// Startpunkt für die UI Generierung
 window.updateHomeUI = function() {
     const animals = Storage.getAnimals();
     animalCountDisplay.textContent = animals.length;
@@ -65,12 +108,12 @@ window.updateHomeUI = function() {
         }
         splitsHtml += '</ul>';
 
-        // NEU: Pausen-Informationen in das HTML einfügen
         let pausesHtml = '';
         if (run.pauses && run.pauses.length > 0) {
             pausesHtml = `<p style="margin-top: 15px;"><strong>⏸️ Pausen (Gesamt: ${run.totalPauseTime}):</strong></p><ul class="splits-list" style="color: #888;">`;
             run.pauses.forEach((p, idx) => {
-                pausesHtml += `<li><span>Pause ${idx + 1}:</span> <strong>${p.duration}</strong></li>`;
+                const kmMark = p.km ? `bei km ${p.km}` : 'unbekannter km';
+                pausesHtml += `<li><span>Pause ${idx + 1} (${kmMark}):</span> <strong>${p.duration}</strong></li>`;
             });
             pausesHtml += '</ul>';
         }
@@ -91,15 +134,20 @@ window.updateHomeUI = function() {
         li.addEventListener('click', (e) => {
             if (e.target.closest('.run-map')) return; 
 
-            const isExpanded = li.classList.toggle('expanded');
+            const isExpanded = li.classList.contains('expanded');
             
-            if (isExpanded) {
+            document.querySelectorAll('.run-item-clickable').forEach(item => {
+                item.classList.remove('expanded');
+            });
+
+            if (!isExpanded) {
+                li.classList.add('expanded');
+                
                 setTimeout(() => {
                     const runMapId = `map-${run.id}`;
                     const mapContainer = document.getElementById(runMapId);
                     
                     if (mapContainer && !mapContainer._leaflet_id) {
-                        // NEU: Behandelt die neue routeSegments Struktur oder fällt für alte Läufe auf run.route zurück
                         if ((run.routeSegments && run.routeSegments.length > 0) || (run.route && run.route.length > 0)) {
                             const subMap = L.map(runMapId, { zoomControl: false });
                             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -108,7 +156,6 @@ window.updateHomeUI = function() {
                             
                             let allCoords = [];
 
-                            // NEU: Segmente zeichnen (Aktiv vs. Pause Luftlinie)
                             if (run.routeSegments) {
                                 run.routeSegments.forEach(segment => {
                                     const color = segment.type === 'pause' ? '#aaaaaa' : '#4CAF50';
@@ -119,7 +166,6 @@ window.updateHomeUI = function() {
                                     allCoords.push(...segment.coords);
                                 });
                             } else {
-                                // Fallback für alte Daten ohne Pausen-Segmente
                                 L.polyline(run.route, {color: '#4CAF50', weight: 4}).addTo(subMap);
                                 allCoords = run.route;
                             }
@@ -207,5 +253,7 @@ toggleInfoBtn.addEventListener('click', () => {
     }
 });
 
+// Setup
+loadAndApplySettings();
 window.updateHomeUI();
 window.updateProfileUI();

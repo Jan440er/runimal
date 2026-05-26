@@ -1,7 +1,7 @@
 :root {
     --primary: #4CAF50;
     --danger: #f44336;
-    --warning: #ff9800; /* NEU: Farbe für den Pause-Button */
+    --warning: #ff9800; 
     --text: #333;
     --bg-solid: #f4f7f6; 
 }
@@ -19,20 +19,12 @@ body {
     background-color: var(--bg-solid);
 }
 
-#map {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    z-index: 0;
-}
-
 .app-content {
     position: relative;
     z-index: 10;
     height: calc(100vh - 70px); 
     width: 100%;
+    transition: height 0.3s ease; 
 }
 
 .view {
@@ -49,25 +41,72 @@ body {
     flex-direction: column;
 }
 
-#view-home, #view-profile {
+/* NEU: view-settings in das Standard-Padding mitaufgenommen */
+#view-collection, #view-runs, #view-profile, #view-settings {
     background-color: var(--bg-solid);
     padding: 20px;
 }
 
 #view-track {
-    background: transparent;
-    pointer-events: none; 
+    background: var(--bg-solid);
+    padding: 20px;
+    display: none;
+    flex-direction: column;
+}
+
+#view-track.active {
+    display: flex;
+}
+
+#map-container {
+    flex: 1;
+    width: 100%;
+    min-height: 250px;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    position: relative;
+    transition: all 0.3s ease;
+    z-index: 1;
+}
+
+#map {
+    width: 100%;
+    height: 100%;
 }
 
 .ui-layer {
-    padding: 20px;
+    padding-top: 20px;
     display: flex;
     flex-direction: column;
-    height: 100%;
     justify-content: flex-end; 
+    transition: all 0.3s ease;
 }
 
-header, .stats-card, .controls, .status-bar, .home-content, .profile-content {
+body.tracking-active .bottom-nav {
+    transform: translateY(100%); 
+}
+body.tracking-active .app-content {
+    height: 100vh; 
+}
+body.tracking-active #view-track {
+    padding: 0; 
+}
+body.tracking-active #map-container {
+    border-radius: 0; 
+}
+body.tracking-active .ui-layer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    z-index: 10;
+    background: linear-gradient(to top, rgba(244, 247, 246, 1) 20%, rgba(244, 247, 246, 0.8) 70%, transparent);
+    padding: 20px;
+    padding-bottom: env(safe-area-inset-bottom, 20px);
+}
+
+header, .stats-card, .controls, .status-bar, .home-content, .profile-content, .settings-content {
     pointer-events: auto; 
 }
 
@@ -76,11 +115,9 @@ header {
     margin-bottom: 20px;
     text-shadow: none;
 }
-#view-track header {
-    text-shadow: 0 2px 4px rgba(255,255,255,0.8); 
-}
 
 h1 { font-size: 2rem; color: var(--primary); }
+h3 { margin-bottom: 5px; color: #555; } /* NEU: Für Settings */
 
 .stats-card {
     background: rgba(255, 255, 255, 0.9);
@@ -98,6 +135,27 @@ h1 { font-size: 2rem; color: var(--primary); }
 .stat { display: flex; flex-direction: column; flex: 1;}
 .label { font-size: 0.8rem; color: #555; text-transform: uppercase; letter-spacing: 0.5px; }
 .value { font-size: 1.3rem; font-weight: bold; margin-top: 5px; }
+
+/* NEU: UI Styling für die Einstellungen */
+.settings-group {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+.settings-group:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+.settings-input, .settings-select {
+    padding: 8px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 0.95rem;
+    width: 130px;
+    background: #fff;
+}
 
 .status-bar {
     background: rgba(255, 255, 255, 0.9);
@@ -131,7 +189,7 @@ h1 { font-size: 2rem; color: var(--primary); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
 .btn.primary { background-color: var(--primary); }
 .btn.danger { background-color: var(--danger); }
-.btn.warning { background-color: var(--warning); } /* NEU */
+.btn.warning { background-color: var(--warning); } 
 
 .recent-runs {
     margin-bottom: 30px;
@@ -223,12 +281,14 @@ h2 { font-size: 1.2rem; margin-bottom: 15px; border-bottom: 1px solid #ccc; padd
     align-items: center;
     z-index: 100;
     padding-bottom: env(safe-area-inset-bottom); 
+    transition: transform 0.3s ease; 
 }
 .nav-item {
+    flex: 1; /* NEU: Sichert gleichmäßige Verteilung bei 5 Items */
     background: none;
     border: none;
     color: #888;
-    font-size: 0.8rem;
+    font-size: 0.75rem; /* NEU: Leicht verkleinert, damit alle Wörter gut passen */
     cursor: pointer;
     display: flex;
     flex-direction: column;

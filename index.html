@@ -9,23 +9,15 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="map"></div>
-
     <div class="app-content">
         
-        <section id="view-home" class="view">
+        <section id="view-collection" class="view">
             <header>
                 <h1>🏃🏽‍♂️ RunSafari</h1>
                 <p>Willkommen zurück!</p>
             </header>
             
             <div class="home-content">
-                <section class="recent-runs">
-                    <h2>Letzte Läufe</h2>
-                    <ul id="runsList" class="list-group">
-                        </ul>
-                </section>
-
                 <section class="collection-area">
                     <h2>Deine Sammlung (<span id="animalCount">0</span>)</h2>
                     <ul id="collectionList" class="animal-grid">
@@ -34,20 +26,38 @@
             </div>
         </section>
 
+        <section id="view-runs" class="view">
+            <header>
+                <h1>📝 Historie</h1>
+                <p>Deine letzten Läufe</p>
+            </header>
+            
+            <div class="home-content">
+                <section class="recent-runs">
+                    <ul id="runsList" class="list-group">
+                        </ul>
+                </section>
+            </div>
+        </section>
+
         <section id="view-track" class="view active">
+            <div id="map-container">
+                <div id="map"></div>
+            </div>
+
             <div class="ui-layer">
                 <div class="stats-card">
                     <div class="stat">
-                        <span class="label">Distanz</span>
-                        <span class="value"><span id="distance">0.00</span> km</span>
+                        <span class="label" id="stat1-label">Distanz</span>
+                        <span class="value" id="stat1-value">0.00 km</span>
                     </div>
                     <div class="stat">
-                        <span class="label">Zeit</span>
-                        <span class="value" id="time">00:00</span>
+                        <span class="label" id="stat2-label">Zeit</span>
+                        <span class="value" id="stat2-value">00:00</span>
                     </div>
                     <div class="stat">
-                        <span class="label">Ø Pace</span>
-                        <span class="value" id="speed">00:00</span>
+                        <span class="label" id="stat3-label">Ø Pace</span>
+                        <span class="value" id="stat3-value">00:00</span>
                     </div>
                 </div>
 
@@ -87,12 +97,69 @@
             </div>
         </section>
 
+        <section id="view-settings" class="view">
+            <header>
+                <h1>⚙️ Profil & UI</h1>
+                <p>Passe dein Tracking an</p>
+            </header>
+            
+            <div class="settings-content">
+                <div class="stats-card" style="flex-direction: column; text-align: left; gap: 15px;">
+                    <h3>🧍🏽‍♂️ Körperdaten</h3>
+                    <div class="settings-group">
+                        <label>Gewicht (kg):</label>
+                        <input type="number" id="setting-weight" class="settings-input" min="30" max="250">
+                    </div>
+                    <div class="settings-group">
+                        <label>Größe (cm):</label>
+                        <input type="number" id="setting-height" class="settings-input" min="100" max="250">
+                    </div>
+                </div>
+
+                <div class="stats-card" style="flex-direction: column; text-align: left; gap: 15px;">
+                    <h3>📊 Tracking-Anzeige (3 Slots)</h3>
+                    <div class="settings-group">
+                        <label>Slot 1:</label>
+                        <select id="setting-stat1" class="settings-select">
+                            <option value="distance">Distanz (km)</option>
+                            <option value="time">Zeit</option>
+                            <option value="pace">Ø Pace</option>
+                            <option value="kcal">Kalorien (kcal)</option>
+                            <option value="fluid">Flüssigkeit (ml)</option>
+                        </select>
+                    </div>
+                    <div class="settings-group">
+                        <label>Slot 2:</label>
+                        <select id="setting-stat2" class="settings-select">
+                            <option value="distance">Distanz (km)</option>
+                            <option value="time">Zeit</option>
+                            <option value="pace">Ø Pace</option>
+                            <option value="kcal">Kalorien (kcal)</option>
+                            <option value="fluid">Flüssigkeit (ml)</option>
+                        </select>
+                    </div>
+                    <div class="settings-group">
+                        <label>Slot 3:</label>
+                        <select id="setting-stat3" class="settings-select">
+                            <option value="distance">Distanz (km)</option>
+                            <option value="time">Zeit</option>
+                            <option value="pace">Ø Pace</option>
+                            <option value="kcal">Kalorien (kcal)</option>
+                            <option value="fluid">Flüssigkeit (ml)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </section>
+
     </div>
 
     <nav class="bottom-nav">
-        <button class="nav-item" data-target="view-home">🏠<br>Home</button>
+        <button class="nav-item" data-target="view-collection">🦁<br>Sammlung</button>
+        <button class="nav-item" data-target="view-runs">📝<br>Läufe</button>
         <button class="nav-item active" data-target="view-track">📍<br>Tracken</button>
         <button class="nav-item" data-target="view-profile">📦<br>Boxen</button>
+        <button class="nav-item" data-target="view-settings">⚙️<br>UI</button>
     </nav>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
