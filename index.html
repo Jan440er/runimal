@@ -78,9 +78,10 @@
             </header>
             
             <div class="profile-content">
-                <div class="box-status stats-card" style="flex-direction: column; align-items: center; gap: 15px;">
-                    <h2>Verfügbare Boxen: <span id="boxCountDisplay" style="color: var(--primary); font-size: 1.5rem;">0</span></h2>
-                    <button id="openBoxBtn" class="btn primary" style="width: 100%;">Eine Box öffnen</button>
+                <div class="box-status stats-card" style="flex-direction: column; align-items: stretch; gap: 15px; padding: 15px;">
+                    <h2 style="text-align: center; margin-bottom: 5px;">Verfügbare Boxen</h2>
+                    <ul id="inventoryList" class="inventory-list">
+                        </ul>
                 </div>
 
                 <div id="boxResult" class="box-result">
@@ -90,9 +91,8 @@
                     <button id="toggleInfoBtn" class="btn" style="background: #ddd; color: #333; width: 100%;">📊 Wahrscheinlichkeiten ansehen</button>
                 </div>
                 
-                <div id="infoCard" class="info-card" style="display: none; margin-top: 15px;">
-                    <ul id="rarityList" class="list-group">
-                        </ul>
+                <div id="infoCard" class="info-card" style="display: none; margin-top: 15px; overflow-x: auto;">
+                    <div id="probTableContainer"></div>
                 </div>
             </div>
         </section>

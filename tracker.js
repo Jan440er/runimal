@@ -3,14 +3,21 @@ const pauseBtn = document.getElementById('pauseBtn');
 const stopBtn = document.getElementById('stopBtn');
 const statusDisplay = document.getElementById('status');
 
-// NEU: Eigene Variablen für die interne Berechnung (anstatt UI Auslesung)
 let currentPaceString = "00:00";
 let watchId = null;
 let totalDistance = 0; 
 let lastPosition = null;
 
-let nextRewardDistance = 0.05; 
-let boxesEarnedThisRun = 0; 
+// NEU: Tracker für die verschiedenen Meilensteine der Boxen (in km)
+let nextBoxThresholds = {
+    '50m': 0.05,
+    '500m': 0.5,
+    '5km': 5.0,
+    '10km': 10.0,
+    '21km': 21.0
+};
+// NEU: Speicher für die in diesem Lauf gesammelten Boxen
+let boxesEarnedThisRun = { '50m': 0, '500m': 0, '5km': 0, '10km': 0, '21km': 0 }; 
 
 let map = null;
 let userMarker = null;
@@ -51,16 +58,12 @@ function formatTime(seconds) {
     return `${m}:${s}`;
 }
 
-// NEU: Diese globale Funktion rendert die Daten dynamisch nach den Nutzerwünschen
 window.renderStats = function() {
     const settings = Storage.getSettings();
     
-    // Berechnungen anhand der Körperdaten
     const burnedKcal = Math.round(settings.weight * totalDistance * 1.036);
-    // Flüssigkeitsbedarf: ca 8ml pro KG pro Stunde Sport 
     const fluidNeed = Math.round(settings.weight * 8 * (elapsedSeconds / 3600));
 
-    // Alle möglichen Anzeige-Strings formatieren
     const statsData = { 
         'distance': `${totalDistance.toFixed(2)} km`, 
         'time': formatTime(elapsedSeconds), 
@@ -69,7 +72,6 @@ window.renderStats = function() {
         'fluid': `${fluidNeed} ml` 
     };
     
-    // Die Bezeichnungen
     const statsLabels = { 
         'distance': 'Distanz', 
         'time': 'Zeit', 
@@ -78,7 +80,6 @@ window.renderStats = function() {
         'fluid': 'Wasserbedarf' 
     };
 
-    // Die drei Slots überschreiben
     document.getElementById('stat1-label').textContent = statsLabels[settings.stat1];
     document.getElementById('stat1-value').textContent = statsData[settings.stat1];
     
@@ -98,7 +99,6 @@ function updateTimer() {
 
     elapsedSeconds = Math.floor((Date.now() - startTime - totalPauseMs) / 1000);
 
-    // NEU: Pace hier intern berechnen, wird aber erst in renderStats aufs UI gebracht
     if (elapsedSeconds > 0 && totalDistance > 0) {
         const totalMinutes = elapsedSeconds / 60;
         const paceDecimal = totalMinutes / totalDistance;
@@ -114,13 +114,14 @@ function updateTimer() {
         currentPaceString = "00:00";
     }
 
-    window.renderStats(); // UI Updaten
+    window.renderStats(); 
 }
 
-function spawnBoxOnMap(lat, lng) {
+// NEU: Unterstützt nun dynamische Icons, je nach Box-Typ
+function spawnBoxOnMap(lat, lng, iconEmoji = '📦') {
     if (map) {
         const boxIcon = L.divIcon({
-            html: `<div>📦</div>`,
+            html: `<div>${iconEmoji}</div>`,
             className: 'animal-map-marker',
             iconSize: [34, 34],
             iconAnchor: [17, 17]
@@ -217,10 +218,31 @@ function bindGeolocationWatch() {
                 if (dist > 0.005) {
                     totalDistance += dist;
                     
-                    if (totalDistance >= nextRewardDistance) {
-                        boxesEarnedThisRun++;
-                        spawnBoxOnMap(latitude, longitude);
-                        nextRewardDistance += 0.05; 
+                    // NEU: Wir checken jeden einzelnen Schwellenwert der 5 Box-Typen separat
+                    if (totalDistance >= nextBoxThresholds['50m']) { 
+                        boxesEarnedThisRun['50m']++; 
+                        spawnBoxOnMap(latitude, longitude, '📦'); 
+                        nextBoxThresholds['50m'] += 0.05; 
+                    }
+                    if (totalDistance >= nextBoxThresholds['500m']) { 
+                        boxesEarnedThisRun['500m']++; 
+                        spawnBoxOnMap(latitude, longitude, '🥉'); 
+                        nextBoxThresholds['500m'] += 0.5; 
+                    }
+                    if (totalDistance >= nextBoxThresholds['5km']) { 
+                        boxesEarnedThisRun['5km']++; 
+                        spawnBoxOnMap(latitude, longitude, '🥈'); 
+                        nextBoxThresholds['5km'] += 5.0; 
+                    }
+                    if (totalDistance >= nextBoxThresholds['10km']) { 
+                        boxesEarnedThisRun['10km']++; 
+                        spawnBoxOnMap(latitude, longitude, '🥇'); 
+                        nextBoxThresholds['10km'] += 10.0; 
+                    }
+                    if (totalDistance >= nextBoxThresholds['21km']) { 
+                        boxesEarnedThisRun['21km']++; 
+                        spawnBoxOnMap(latitude, longitude, '💎'); 
+                        nextBoxThresholds['21km'] += 21.0; 
                     }
 
                     if (totalDistance >= nextSplitDistance) {
@@ -230,7 +252,6 @@ function bindGeolocationWatch() {
                         nextSplitDistance += 1.0;
                     }
 
-                    // NEU: Sichergehen, dass das UI nach der Distanzerhöhung geupdatet wird
                     window.renderStats(); 
                 }
             } 
@@ -260,14 +281,15 @@ function startTracking() {
         if (map) map.invalidateSize();
     }, 350);
 
-    // NEU: Interne Basiswerte nullen
     totalDistance = 0;
     elapsedSeconds = 0;
     currentPaceString = "00:00"; 
-    nextRewardDistance = 0.05; 
-    boxesEarnedThisRun = 0;   
     
-    window.renderStats(); // Nullen sofort auf das UI bringen
+    // NEU: Zurücksetzen aller Distanz-Marker und gesammelten Boxen bei Laufstart
+    nextBoxThresholds = { '50m': 0.05, '500m': 0.5, '5km': 5.0, '10km': 10.0, '21km': 21.0 };
+    boxesEarnedThisRun = { '50m': 0, '500m': 0, '5km': 0, '10km': 0, '21km': 0 };
+    
+    window.renderStats(); 
     
     routeSegments = [];
     currentSegment = [];
@@ -386,7 +408,6 @@ function stopTracking() {
 
         const totalPauseTimeStr = formatTime(Math.floor(totalPauseMs / 1000));
         
-        // NEU: Wir übergeben die rohen Werte, unabhängig davon, ob sie im UI gerade sichtbar waren
         const runId = Storage.saveRun(
             totalDistance.toFixed(2), 
             formatTime(elapsedSeconds), 
@@ -397,11 +418,13 @@ function stopTracking() {
             pauses
         );
         
-        if (boxesEarnedThisRun > 0) {
+        // NEU: Gesamte Box-Ausbeute des Laufes berechnen
+        let totalBoxesThisRun = Object.values(boxesEarnedThisRun).reduce((sum, count) => sum + count, 0);
+        if (totalBoxesThisRun > 0) {
             Storage.saveBoxes(runId, boxesEarnedThisRun);
         }
 
-        alert(`Lauf beendet! Du hast ${boxesEarnedThisRun} Box(en) gesammelt! Öffne sie im Inventar.`);
+        alert(`Lauf beendet! Du hast insgesamt ${totalBoxesThisRun} Box(en) gesammelt!`);
         statusDisplay.textContent = "Gespeichert!";
         statusDisplay.style.color = "var(--primary)";
         

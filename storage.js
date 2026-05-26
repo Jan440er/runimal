@@ -1,13 +1,21 @@
 const Storage = {
     RARITIES: [
-        { name: 'Gewöhnlich', chance: 50, animals: ['🐰', '🐿️', '🐭', '🦔', '🐦'], color: '#9e9e9e' },
-        { name: 'Ungewöhnlich', chance: 30, animals: ['🐸', '🐢', '🦆', '🦉', '🦇'], color: '#4caf50' },
-        { name: 'Selten', chance: 15, animals: ['🦊', '🐗', '🦌', '🐺', '🐍'], color: '#2196f3' },
-        { name: 'Episch', chance: 4, animals: ['🦅', '🐻', '🦍', '🐊', '🐅'], color: '#9c27b0' },
-        { name: 'Legendär', chance: 1, animals: ['🦄', '🐉', '🦖', '🦣', '🦁'], color: '#ff9800' }
+        { name: 'Gewöhnlich', animals: ['🐰', '🐿️', '🐭', '🦔', '🐦'], color: '#9e9e9e' },
+        { name: 'Ungewöhnlich', animals: ['🐸', '🐢', '🦆', '🦉', '🦇'], color: '#4caf50' },
+        { name: 'Selten', animals: ['🦊', '🐗', '🦌', '🐺', '🐍'], color: '#2196f3' },
+        { name: 'Episch', animals: ['🦅', '🐻', '🦍', '🐊', '🐅'], color: '#9c27b0' },
+        { name: 'Legendär', animals: ['🦄', '🐉', '🦖', '🦣', '🦁'], color: '#ff9800' }
     ],
 
-    // NEU: Funktionen für Benutzer-Einstellungen
+    // NEU: Konfiguration der verschiedenen Box-Typen und deren Wahrscheinlichkeiten (entspricht Index in RARITIES)
+    BOX_TYPES: [
+        { id: '50m', name: 'Standard (50m)', icon: '📦', chances: [95, 5, 0, 0, 0] },
+        { id: '500m', name: 'Bronze (500m)', icon: '🥉', chances: [85, 12, 3, 0, 0] },
+        { id: '5km', name: 'Silber (5km)', icon: '🥈', chances: [70, 20, 8, 2, 0] },
+        { id: '10km', name: 'Gold (10km)', icon: '🥇', chances: [60, 25, 11, 3, 1] },
+        { id: '21km', name: 'Diamant (21km)', icon: '💎', chances: [50, 30, 15, 4, 1] } // Die "alten" originalen Wahrscheinlichkeiten
+    ],
+
     getSettings: () => {
         const data = localStorage.getItem('runSafariSettings');
         return data ? JSON.parse(data) : {
@@ -19,7 +27,6 @@ const Storage = {
         };
     },
 
-    // NEU
     saveSettings: (settingsObj) => {
         localStorage.setItem('runSafariSettings', JSON.stringify(settingsObj));
     },
@@ -81,20 +88,26 @@ const Storage = {
         return data ? JSON.parse(data) : [];
     },
 
-    saveBoxes: (runId, count) => {
+    // NEU: Nimmt nun ein Objekt entgegen { '50m': 2, '500m': 1 ... }
+    saveBoxes: (runId, earnedBoxesMap) => {
         const boxes = Storage.getBoxes();
-        for(let i=0; i<count; i++) {
-            boxes.push({ runId: runId }); 
+        for (const [boxId, count] of Object.entries(earnedBoxesMap)) {
+            for(let i=0; i<count; i++) {
+                // Jede Box bekommt einen eindeutigen Typ und eine Run-ID
+                boxes.push({ type: boxId, runId: runId, uid: Date.now() + Math.random() }); 
+            }
         }
         localStorage.setItem('runSafariBoxes', JSON.stringify(boxes));
     },
 
-    consumeBox: () => {
+    // NEU: Konsumiert nun explizit eine Box eines bestimmten Typs
+    consumeBox: (boxType) => {
         const boxes = Storage.getBoxes();
-        if(boxes.length > 0) {
-            const box = boxes.shift(); 
+        const index = boxes.findIndex(b => b.type === boxType);
+        if(index !== -1) {
+            const box = boxes.splice(index, 1)[0]; 
             localStorage.setItem('runSafariBoxes', JSON.stringify(boxes));
-            return box.runId;
+            return box;
         }
         return null; 
     }

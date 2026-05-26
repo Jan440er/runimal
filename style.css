@@ -41,7 +41,6 @@ body {
     flex-direction: column;
 }
 
-/* NEU: view-settings in das Standard-Padding mitaufgenommen */
 #view-collection, #view-runs, #view-profile, #view-settings {
     background-color: var(--bg-solid);
     padding: 20px;
@@ -117,7 +116,7 @@ header {
 }
 
 h1 { font-size: 2rem; color: var(--primary); }
-h3 { margin-bottom: 5px; color: #555; } /* NEU: Für Settings */
+h3 { margin-bottom: 5px; color: #555; } 
 
 .stats-card {
     background: rgba(255, 255, 255, 0.9);
@@ -136,7 +135,6 @@ h3 { margin-bottom: 5px; color: #555; } /* NEU: Für Settings */
 .label { font-size: 0.8rem; color: #555; text-transform: uppercase; letter-spacing: 0.5px; }
 .value { font-size: 1.3rem; font-weight: bold; margin-top: 5px; }
 
-/* NEU: UI Styling für die Einstellungen */
 .settings-group {
     display: flex;
     justify-content: space-between;
@@ -190,6 +188,7 @@ h3 { margin-bottom: 5px; color: #555; } /* NEU: Für Settings */
 .btn.primary { background-color: var(--primary); }
 .btn.danger { background-color: var(--danger); }
 .btn.warning { background-color: var(--warning); } 
+.btn.small { padding: 8px 12px; font-size: 0.9rem; flex: none; } /* NEU: Kleiner Button fürs Inventar */
 
 .recent-runs {
     margin-bottom: 30px;
@@ -257,14 +256,25 @@ h3 { margin-bottom: 5px; color: #555; } /* NEU: Für Settings */
 
 h2 { font-size: 1.2rem; margin-bottom: 15px; border-bottom: 1px solid #ccc; padding-bottom: 5px; color: #444; }
 
-.animal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 10px; list-style: none; }
-.animal-item { background: white; padding: 10px; border-radius: 12px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); font-size: 1.8rem; animation: popIn 0.3s ease-out; }
+.animal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 10px; list-style: none; }
+.animal-item { background: white; padding: 10px 5px; border-radius: 12px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); animation: popIn 0.3s ease-out; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.animal-emoji { font-size: 1.8rem; margin-bottom: 5px; }
+.animal-rarity-label { font-size: 0.55rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; } /* NEU */
 .animal-map-marker { background: white; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.3); text-align: center; line-height: 30px; font-size: 20px; }
 
 .box-result { text-align: center; margin-top: 20px; min-height: 120px; }
-.rarity-row { display: flex; justify-content: space-between; align-items: center; }
-.rarity-chance { font-weight: bold; }
-.rarity-animals { font-size: 1.2rem; }
+
+/* NEU: Styling für die Inventar-Liste (Boxtypen) */
+.inventory-list { list-style: none; width: 100%; }
+.inventory-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; }
+.inventory-item:last-child { border-bottom: none; }
+.inventory-info { display: flex; align-items: center; gap: 10px; text-align: left; }
+
+/* NEU: Styling für die Wahrscheinlichkeitstabelle */
+.prob-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; background: #fff; text-align: center; }
+.prob-table th, .prob-table td { border: 1px solid #ddd; padding: 8px 4px; }
+.prob-table th { background-color: #f4f7f6; color: #333; font-weight: bold; }
+.prob-table td:first-child { text-align: left; font-weight: bold; }
 
 @keyframes popIn { 0% { transform: scale(0); } 100% { transform: scale(1); } }
 
@@ -284,11 +294,11 @@ h2 { font-size: 1.2rem; margin-bottom: 15px; border-bottom: 1px solid #ccc; padd
     transition: transform 0.3s ease; 
 }
 .nav-item {
-    flex: 1; /* NEU: Sichert gleichmäßige Verteilung bei 5 Items */
+    flex: 1; 
     background: none;
     border: none;
     color: #888;
-    font-size: 0.75rem; /* NEU: Leicht verkleinert, damit alle Wörter gut passen */
+    font-size: 0.75rem; 
     cursor: pointer;
     display: flex;
     flex-direction: column;

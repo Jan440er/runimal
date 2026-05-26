@@ -27,14 +27,13 @@ const collectionList = document.getElementById('collectionList');
 const animalCountDisplay = document.getElementById('animalCount');
 const runsList = document.getElementById('runsList');
 
-const boxCountDisplay = document.getElementById('boxCountDisplay');
-const openBoxBtn = document.getElementById('openBoxBtn');
+// NEU: Referenzen für die neuen Inventar und Tabellen Elemente
+const inventoryList = document.getElementById('inventoryList');
 const boxResult = document.getElementById('boxResult');
 const toggleInfoBtn = document.getElementById('toggleInfoBtn');
 const infoCard = document.getElementById('infoCard');
-const rarityList = document.getElementById('rarityList');
+const probTableContainer = document.getElementById('probTableContainer');
 
-// NEU: Referenzen und Logik für die Einstellungen (Settings)
 const weightInput = document.getElementById('setting-weight');
 const heightInput = document.getElementById('setting-height');
 const stat1Select = document.getElementById('setting-stat1');
@@ -49,7 +48,6 @@ function loadAndApplySettings() {
     stat2Select.value = s.stat2;
     stat3Select.value = s.stat3;
     
-    // UI Update triggern (sofern Tracker schon initialisiert ist)
     if(typeof window.renderStats === 'function') window.renderStats();
 }
 
@@ -70,16 +68,35 @@ function handleSettingsChange() {
     el.addEventListener('input', handleSettingsChange);
 });
 
-// Startpunkt für die UI Generierung
 window.updateHomeUI = function() {
     const animals = Storage.getAnimals();
     animalCountDisplay.textContent = animals.length;
     
     collectionList.innerHTML = '';
+    
+    // NEU: Rendering der Tiere inklusive dynamischer Seltenheit (Rahmen und Text)
     animals.forEach(animal => {
+        let rarityObj = null;
+        for (let r of Storage.RARITIES) {
+            if (r.animals.includes(animal)) {
+                rarityObj = r;
+                break;
+            }
+        }
+
         const li = document.createElement('li');
         li.className = 'animal-item';
-        li.textContent = animal;
+        
+        if (rarityObj) {
+            li.style.border = `2px solid ${rarityObj.color}`;
+            li.innerHTML = `
+                <span class="animal-emoji">${animal}</span>
+                <span class="animal-rarity-label" style="color: ${rarityObj.color}">${rarityObj.name}</span>
+            `;
+        } else {
+            li.textContent = animal;
+        }
+        
         collectionList.appendChild(li);
     });
 
@@ -191,61 +208,117 @@ window.updateHomeUI = function() {
     }
 }
 
+// NEU: Das UI rendert nun dynamische Zeilen für alle Boxtypen, basierend auf dem Bestand
 window.updateProfileUI = function() {
-    const boxes = Storage.getBoxes();
-    boxCountDisplay.textContent = boxes.length;
-    openBoxBtn.disabled = boxes.length === 0;
+    const allBoxes = Storage.getBoxes();
+    inventoryList.innerHTML = '';
+
+    Storage.BOX_TYPES.forEach(boxConfig => {
+        // Zählen, wie viele Boxen dieses Typs im Inventar sind
+        const ownedCount = allBoxes.filter(b => b.type === boxConfig.id).length;
+        
+        const li = document.createElement('li');
+        li.className = 'inventory-item';
+        li.innerHTML = `
+            <div class="inventory-info">
+                <span style="font-size: 2rem;">${boxConfig.icon}</span>
+                <div>
+                    <div style="font-weight: bold;">${boxConfig.name}</div>
+                    <div style="font-size: 0.85rem; color: #777;">Besitz: ${ownedCount}</div>
+                </div>
+            </div>
+            <button class="btn primary small open-btn" data-type="${boxConfig.id}" ${ownedCount === 0 ? 'disabled' : ''}>Öffnen</button>
+        `;
+        inventoryList.appendChild(li);
+    });
+
+    // Event-Listener an die neuen dynamischen Buttons hängen
+    document.querySelectorAll('.open-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const typeToOpen = e.target.getAttribute('data-type');
+            handleBoxOpen(typeToOpen);
+        });
+    });
 }
 
-openBoxBtn.addEventListener('click', () => {
-    const runId = Storage.consumeBox();
-    if (!runId) return; 
+// NEU: Die Logik greift nun auf das spezifische Chancen-Array der jeweiligen Box zu
+function handleBoxOpen(boxType) {
+    const box = Storage.consumeBox(boxType);
+    if (!box) return; 
 
+    // Ermittle die Config des Boxtyps
+    const boxConfig = Storage.BOX_TYPES.find(b => b.id === boxType);
+    
     const rand = Math.random() * 100;
     let currentProbability = 0;
     let drawnAnimal = null;
     let drawnRarity = null;
 
-    for (let r of Storage.RARITIES) {
-        currentProbability += r.chance;
-        if (rand <= currentProbability) {
-            drawnAnimal = r.animals[Math.floor(Math.random() * r.animals.length)];
-            drawnRarity = r;
+    // Iteriere durch die Wahrscheinlichkeiten des speziellen Box-Typs
+    for (let i = 0; i < Storage.RARITIES.length; i++) {
+        const rarityDef = Storage.RARITIES[i];
+        const chanceForThisRarity = boxConfig.chances[i];
+        
+        currentProbability += chanceForThisRarity;
+        
+        // Wenn der Zufallswert in diesem Segment liegt UND die Chance > 0 ist
+        if (rand <= currentProbability && chanceForThisRarity > 0) {
+            drawnAnimal = rarityDef.animals[Math.floor(Math.random() * rarityDef.animals.length)];
+            drawnRarity = rarityDef;
             break;
         }
     }
 
+    // Fallback, falls durch Rundungsfehler nichts getroffen wird (nimmt dann das Häufigste, idR Index 0)
+    if (!drawnAnimal) {
+        drawnRarity = Storage.RARITIES[0];
+        drawnAnimal = drawnRarity.animals[Math.floor(Math.random() * drawnRarity.animals.length)];
+    }
+
     Storage.saveAnimal(drawnAnimal);
-    Storage.addAnimalToRun(runId, drawnAnimal);
+    if(box.runId) {
+        Storage.addAnimalToRun(box.runId, drawnAnimal);
+    }
 
     boxResult.innerHTML = `
         <div class="animal-item" style="border: 3px solid ${drawnRarity.color}; display: inline-block; padding: 20px; transform: scale(1.2);">
-            ${drawnAnimal}
-            <div style="font-size: 0.9rem; color: ${drawnRarity.color}; margin-top: 5px; font-weight: bold;">
+            <div style="font-size: 3rem;">${drawnAnimal}</div>
+            <div style="font-size: 0.9rem; color: ${drawnRarity.color}; margin-top: 5px; font-weight: bold; text-transform: uppercase;">
                 ${drawnRarity.name}
             </div>
+            <div style="font-size: 0.7rem; color: #555; margin-top: 5px;">Aus ${boxConfig.name}</div>
         </div>
     `;
 
     updateProfileUI();
     updateHomeUI();
-});
+}
 
 toggleInfoBtn.addEventListener('click', () => {
     if (infoCard.style.display === 'none') {
         infoCard.style.display = 'block';
         toggleInfoBtn.textContent = '📊 Wahrscheinlichkeiten ausblenden';
         
-        if (rarityList.children.length === 0) {
+        // NEU: Eine saubere HTML-Tabelle generieren
+        if (probTableContainer.innerHTML === '') {
+            let tableHtml = '<table class="prob-table"><thead><tr><th>Box</th>';
+            // Header-Zeile mit den Rarity-Namen
             Storage.RARITIES.forEach(r => {
-                const li = document.createElement('li');
-                li.className = 'rarity-row';
-                li.innerHTML = `
-                    <span class="rarity-chance" style="color: ${r.color}">${r.name} (${r.chance}%)</span>
-                    <span class="rarity-animals">${r.animals.join(' ')}</span>
-                `;
-                rarityList.appendChild(li);
+                tableHtml += `<th style="color: ${r.color}">${r.name}</th>`;
             });
+            tableHtml += '</tr></thead><tbody>';
+
+            // Daten-Zeilen für jeden Box-Typ
+            Storage.BOX_TYPES.forEach(box => {
+                tableHtml += `<tr><td>${box.icon}<br><span style="font-size:0.7rem">${box.name}</span></td>`;
+                box.chances.forEach(chance => {
+                    tableHtml += `<td>${chance > 0 ? chance + '%' : '-'}</td>`;
+                });
+                tableHtml += '</tr>';
+            });
+            tableHtml += '</tbody></table>';
+            
+            probTableContainer.innerHTML = tableHtml;
         }
     } else {
         infoCard.style.display = 'none';
@@ -253,7 +326,6 @@ toggleInfoBtn.addEventListener('click', () => {
     }
 });
 
-// Setup
 loadAndApplySettings();
 window.updateHomeUI();
 window.updateProfileUI();
