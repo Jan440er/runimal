@@ -1,4 +1,3 @@
-// NEU: RARITIES fest in das Storage-Objekt integriert, um Scope-Probleme zu vermeiden
 const Storage = {
     RARITIES: [
         { name: 'Gewöhnlich', chance: 50, animals: ['🐰', '🐿️', '🐭', '🦔', '🐦'], color: '#9e9e9e' },
@@ -24,8 +23,8 @@ const Storage = {
         return data ? JSON.parse(data) : [];
     },
 
-    // NEU: Parameter erweitert, um Pace, Route (GPS-Punkte) und Splits abzuspeichern
-    saveRun: (distance, timeStr, paceStr, route, splits) => {
+    // NEU: Nimmt nun routeSegments (Array mit Aktiv/Pause-Typ), totalPauseTime und pauses entgegen
+    saveRun: (distance, timeStr, paceStr, routeSegments, splits, totalPauseTime, pauses) => {
         const runs = Storage.getRuns();
         const runId = Date.now();
         const newRun = {
@@ -33,9 +32,11 @@ const Storage = {
             date: new Date().toLocaleDateString('de-DE'),
             distance: distance,
             time: timeStr,
-            pace: paceStr,   // NEU: Speichert Pace statt km/h
-            route: route,   // NEU: Speichert Array von [lat, lng]
-            splits: splits, // NEU: Speichert Array von Zeiten pro Kilometer
+            pace: paceStr,   
+            routeSegments: routeSegments, // NEU: Speichert das strukturierte Segmente-Array
+            splits: splits,
+            totalPauseTime: totalPauseTime, // NEU: Gesamte Pausenzeit als String
+            pauses: pauses, // NEU: Array der einzelnen Pausenzeiten
             animals: [] 
         };
         runs.unshift(newRun); 

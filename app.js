@@ -47,7 +47,6 @@ window.updateHomeUI = function() {
     const runs = Storage.getRuns();
     runsList.innerHTML = '';
     
-    // NEU: Rendert Läufe als ausklappbares Accordion inklusive Karte und Splits
     runs.forEach(run => {
         const li = document.createElement('li');
         li.className = 'run-item-clickable';
@@ -56,7 +55,6 @@ window.updateHomeUI = function() {
             ? `<div class="run-animals">Gezogen: ${run.animals.join(' ')}</div>` 
             : `<div class="run-animals" style="color:#aaa; font-size: 0.9rem;">Keine Tiere gezogen</div>`;
 
-        // Splits HTML Struktur aufbauen
         let splitsHtml = '<p><strong>⏱️ Kilometer-Splits:</strong></p><ul class="splits-list">';
         if (run.splits && run.splits.length > 0) {
             run.splits.forEach((splitTime, index) => {
@@ -67,7 +65,16 @@ window.updateHomeUI = function() {
         }
         splitsHtml += '</ul>';
 
-        // Listen-Inhalt zusammensetzen (Pace statt km/h)
+        // NEU: Pausen-Informationen in das HTML einfügen
+        let pausesHtml = '';
+        if (run.pauses && run.pauses.length > 0) {
+            pausesHtml = `<p style="margin-top: 15px;"><strong>⏸️ Pausen (Gesamt: ${run.totalPauseTime}):</strong></p><ul class="splits-list" style="color: #888;">`;
+            run.pauses.forEach((p, idx) => {
+                pausesHtml += `<li><span>Pause ${idx + 1}:</span> <strong>${p.duration}</strong></li>`;
+            });
+            pausesHtml += '</ul>';
+        }
+
         li.innerHTML = `
             <div class="run-header">
                 <span class="run-date">${run.date}</span>
@@ -76,13 +83,13 @@ window.updateHomeUI = function() {
             ${animalsHtml}
             <div class="run-details">
                 ${splitsHtml}
+                ${pausesHtml}
                 <div class="run-map" id="map-${run.id}"></div>
             </div>
         `;
         
-        // Klick-Logik zum Öffnen/Schließen und Laden der Leaflet Route
         li.addEventListener('click', (e) => {
-            if (e.target.closest('.run-map')) return; // Klicks auf Karte ignorieren
+            if (e.target.closest('.run-map')) return; 
 
             const isExpanded = li.classList.toggle('expanded');
             
@@ -91,21 +98,37 @@ window.updateHomeUI = function() {
                     const runMapId = `map-${run.id}`;
                     const mapContainer = document.getElementById(runMapId);
                     
-                    // Verhindert doppelte Karten-Initialisierung
                     if (mapContainer && !mapContainer._leaflet_id) {
-                        if (run.route && run.route.length > 0) {
+                        // NEU: Behandelt die neue routeSegments Struktur oder fällt für alte Läufe auf run.route zurück
+                        if ((run.routeSegments && run.routeSegments.length > 0) || (run.route && run.route.length > 0)) {
                             const subMap = L.map(runMapId, { zoomControl: false });
                             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                                 maxZoom: 19
                             }).addTo(subMap);
                             
-                            // Route einzeichnen
-                            const polyline = L.polyline(run.route, {color: '#4CAF50', weight: 4}).addTo(subMap);
-                            subMap.fitBounds(polyline.getBounds(), { padding: [15, 15] });
+                            let allCoords = [];
+
+                            // NEU: Segmente zeichnen (Aktiv vs. Pause Luftlinie)
+                            if (run.routeSegments) {
+                                run.routeSegments.forEach(segment => {
+                                    const color = segment.type === 'pause' ? '#aaaaaa' : '#4CAF50';
+                                    const dashArray = segment.type === 'pause' ? '5, 8' : null;
+                                    const weight = segment.type === 'pause' ? 3 : 4;
+                                    
+                                    L.polyline(segment.coords, {color: color, weight: weight, dashArray: dashArray}).addTo(subMap);
+                                    allCoords.push(...segment.coords);
+                                });
+                            } else {
+                                // Fallback für alte Daten ohne Pausen-Segmente
+                                L.polyline(run.route, {color: '#4CAF50', weight: 4}).addTo(subMap);
+                                allCoords = run.route;
+                            }
                             
-                            // Start- & Zielmarker setzen
-                            L.circleMarker(run.route[0], {radius: 5, fillColor: '#4CAF50', color: '#fff', weight: 2, fillOpacity: 1}).addTo(subMap);
-                            L.circleMarker(run.route[run.route.length - 1], {radius: 5, fillColor: '#f44336', color: '#fff', weight: 2, fillOpacity: 1}).addTo(subMap);
+                            if (allCoords.length > 0) {
+                                subMap.fitBounds(L.latLngBounds(allCoords), { padding: [15, 15] });
+                                L.circleMarker(allCoords[0], {radius: 5, fillColor: '#4CAF50', color: '#fff', weight: 2, fillOpacity: 1}).addTo(subMap);
+                                L.circleMarker(allCoords[allCoords.length - 1], {radius: 5, fillColor: '#f44336', color: '#fff', weight: 2, fillOpacity: 1}).addTo(subMap);
+                            }
                         } else {
                             mapContainer.innerHTML = '<p style="padding: 10px; color: #888; font-size: 0.85rem;">Keine Routenpunkte vorhanden.</p>';
                         }
