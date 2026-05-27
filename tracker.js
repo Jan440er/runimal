@@ -8,7 +8,6 @@ let watchId = null;
 let totalDistance = 0; 
 let lastPosition = null;
 
-// NEU: Tracker für die verschiedenen Meilensteine der Boxen (in km)
 let nextBoxThresholds = {
     '50m': 0.05,
     '500m': 0.5,
@@ -16,7 +15,6 @@ let nextBoxThresholds = {
     '10km': 10.0,
     '21km': 21.0
 };
-// NEU: Speicher für die in diesem Lauf gesammelten Boxen
 let boxesEarnedThisRun = { '50m': 0, '500m': 0, '5km': 0, '10km': 0, '21km': 0 }; 
 
 let map = null;
@@ -117,7 +115,6 @@ function updateTimer() {
     window.renderStats(); 
 }
 
-// NEU: Unterstützt nun dynamische Icons, je nach Box-Typ
 function spawnBoxOnMap(lat, lng, iconEmoji = '📦') {
     if (map) {
         const boxIcon = L.divIcon({
@@ -133,10 +130,32 @@ function spawnBoxOnMap(lat, lng, iconEmoji = '📦') {
 function initDefaultMap() {
     if (!map) {
         map = L.map('map', { zoomControl: false }).setView([51.1657, 10.4515], 6);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        
+        const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '© OpenStreetMap'
-        }).addTo(map);
+        });
+
+        const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19,
+            attribution: '© Esri'
+        });
+
+        // NEU: Clean-Color Karte (CartoDB Voyager) statt der grauen abstrakten Karte, zeigt Wasser und Straßen deutlich
+        const cleanColorLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            maxZoom: 20,
+            attribution: '© OpenStreetMap © CARTO'
+        });
+
+        streetLayer.addTo(map);
+
+        // NEU: Den Umschalter auf "Klar" für die neue Karte aktualisiert
+        const baseMaps = {
+            "Straßen": streetLayer,
+            "Satellit": satelliteLayer,
+            "Klar": cleanColorLayer
+        };
+        L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
     }
 }
 
@@ -218,7 +237,6 @@ function bindGeolocationWatch() {
                 if (dist > 0.005) {
                     totalDistance += dist;
                     
-                    // NEU: Wir checken jeden einzelnen Schwellenwert der 5 Box-Typen separat
                     if (totalDistance >= nextBoxThresholds['50m']) { 
                         boxesEarnedThisRun['50m']++; 
                         spawnBoxOnMap(latitude, longitude, '📦'); 
@@ -285,7 +303,6 @@ function startTracking() {
     elapsedSeconds = 0;
     currentPaceString = "00:00"; 
     
-    // NEU: Zurücksetzen aller Distanz-Marker und gesammelten Boxen bei Laufstart
     nextBoxThresholds = { '50m': 0.05, '500m': 0.5, '5km': 5.0, '10km': 10.0, '21km': 21.0 };
     boxesEarnedThisRun = { '50m': 0, '500m': 0, '5km': 0, '10km': 0, '21km': 0 };
     
@@ -418,7 +435,6 @@ function stopTracking() {
             pauses
         );
         
-        // NEU: Gesamte Box-Ausbeute des Laufes berechnen
         let totalBoxesThisRun = Object.values(boxesEarnedThisRun).reduce((sum, count) => sum + count, 0);
         if (totalBoxesThisRun > 0) {
             Storage.saveBoxes(runId, boxesEarnedThisRun);

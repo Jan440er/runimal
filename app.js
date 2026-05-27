@@ -27,7 +27,6 @@ const collectionList = document.getElementById('collectionList');
 const animalCountDisplay = document.getElementById('animalCount');
 const runsList = document.getElementById('runsList');
 
-// NEU: Referenzen für die neuen Inventar und Tabellen Elemente
 const inventoryList = document.getElementById('inventoryList');
 const boxResult = document.getElementById('boxResult');
 const toggleInfoBtn = document.getElementById('toggleInfoBtn');
@@ -74,7 +73,6 @@ window.updateHomeUI = function() {
     
     collectionList.innerHTML = '';
     
-    // NEU: Rendering der Tiere inklusive dynamischer Seltenheit (Rahmen und Text)
     animals.forEach(animal => {
         let rarityObj = null;
         for (let r of Storage.RARITIES) {
@@ -167,9 +165,26 @@ window.updateHomeUI = function() {
                     if (mapContainer && !mapContainer._leaflet_id) {
                         if ((run.routeSegments && run.routeSegments.length > 0) || (run.route && run.route.length > 0)) {
                             const subMap = L.map(runMapId, { zoomControl: false });
-                            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                            
+                            const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                                 maxZoom: 19
-                            }).addTo(subMap);
+                            });
+                            const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                                maxZoom: 19
+                            });
+                            // NEU: Besser erkennbare, farbige, aber dennoch saubere Karte (CartoDB Voyager)
+                            const cleanColorLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                                maxZoom: 20
+                            });
+
+                            streetLayer.addTo(subMap);
+                            
+                            // NEU: Umschalter in der Historie angepasst ("Klar" statt "Abstrakt")
+                            L.control.layers({
+                                "Straßen": streetLayer,
+                                "Satellit": satLayer,
+                                "Klar": cleanColorLayer
+                            }, null, { position: 'topright' }).addTo(subMap);
                             
                             let allCoords = [];
 
@@ -208,13 +223,11 @@ window.updateHomeUI = function() {
     }
 }
 
-// NEU: Das UI rendert nun dynamische Zeilen für alle Boxtypen, basierend auf dem Bestand
 window.updateProfileUI = function() {
     const allBoxes = Storage.getBoxes();
     inventoryList.innerHTML = '';
 
     Storage.BOX_TYPES.forEach(boxConfig => {
-        // Zählen, wie viele Boxen dieses Typs im Inventar sind
         const ownedCount = allBoxes.filter(b => b.type === boxConfig.id).length;
         
         const li = document.createElement('li');
@@ -232,7 +245,6 @@ window.updateProfileUI = function() {
         inventoryList.appendChild(li);
     });
 
-    // Event-Listener an die neuen dynamischen Buttons hängen
     document.querySelectorAll('.open-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const typeToOpen = e.target.getAttribute('data-type');
@@ -241,12 +253,10 @@ window.updateProfileUI = function() {
     });
 }
 
-// NEU: Die Logik greift nun auf das spezifische Chancen-Array der jeweiligen Box zu
 function handleBoxOpen(boxType) {
     const box = Storage.consumeBox(boxType);
     if (!box) return; 
 
-    // Ermittle die Config des Boxtyps
     const boxConfig = Storage.BOX_TYPES.find(b => b.id === boxType);
     
     const rand = Math.random() * 100;
@@ -254,14 +264,12 @@ function handleBoxOpen(boxType) {
     let drawnAnimal = null;
     let drawnRarity = null;
 
-    // Iteriere durch die Wahrscheinlichkeiten des speziellen Box-Typs
     for (let i = 0; i < Storage.RARITIES.length; i++) {
         const rarityDef = Storage.RARITIES[i];
         const chanceForThisRarity = boxConfig.chances[i];
         
         currentProbability += chanceForThisRarity;
         
-        // Wenn der Zufallswert in diesem Segment liegt UND die Chance > 0 ist
         if (rand <= currentProbability && chanceForThisRarity > 0) {
             drawnAnimal = rarityDef.animals[Math.floor(Math.random() * rarityDef.animals.length)];
             drawnRarity = rarityDef;
@@ -269,7 +277,6 @@ function handleBoxOpen(boxType) {
         }
     }
 
-    // Fallback, falls durch Rundungsfehler nichts getroffen wird (nimmt dann das Häufigste, idR Index 0)
     if (!drawnAnimal) {
         drawnRarity = Storage.RARITIES[0];
         drawnAnimal = drawnRarity.animals[Math.floor(Math.random() * drawnRarity.animals.length)];
@@ -299,16 +306,13 @@ toggleInfoBtn.addEventListener('click', () => {
         infoCard.style.display = 'block';
         toggleInfoBtn.textContent = '📊 Wahrscheinlichkeiten ausblenden';
         
-        // NEU: Eine saubere HTML-Tabelle generieren
         if (probTableContainer.innerHTML === '') {
             let tableHtml = '<table class="prob-table"><thead><tr><th>Box</th>';
-            // Header-Zeile mit den Rarity-Namen
             Storage.RARITIES.forEach(r => {
                 tableHtml += `<th style="color: ${r.color}">${r.name}</th>`;
             });
             tableHtml += '</tr></thead><tbody>';
 
-            // Daten-Zeilen für jeden Box-Typ
             Storage.BOX_TYPES.forEach(box => {
                 tableHtml += `<tr><td>${box.icon}<br><span style="font-size:0.7rem">${box.name}</span></td>`;
                 box.chances.forEach(chance => {
