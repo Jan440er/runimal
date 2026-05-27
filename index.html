@@ -18,8 +18,36 @@
             </header>
             
             <div class="home-content">
+                <div class="stats-card" style="margin-bottom: 20px;">
+                    <div class="stat">
+                        <span class="label">Dein Level</span>
+                        <span class="value" id="playerLevelDisplay">1</span>
+                    </div>
+                    <div class="stat" style="flex: 2; border-left: 1px solid #eee; padding-left: 15px;">
+                        <span class="label">Erfahrung (XP)</span>
+                        <div style="display: flex; align-items: center; gap: 10px; margin-top: 5px;">
+                            <div class="xp-bar-bg">
+                                <div class="xp-bar-fill" id="playerXPBar"></div>
+                            </div>
+                            <span class="value" id="playerXPDisplay" style="font-size: 1rem; margin-top: 0;">0/100</span>
+                        </div>
+                    </div>
+                </div>
+
                 <section class="collection-area">
                     <h2>Deine Sammlung (<span id="animalCount">0</span>)</h2>
+                    
+                    <div style="margin: 10px 0 15px 0; display: flex; justify-content: space-between; align-items: center;">
+                        <label for="sortCollectionSelect" style="font-size: 0.8rem; font-weight: bold; color: #555; text-transform: uppercase; letter-spacing: 0.5px;">Sortieren nach:</label>
+                        <select id="sortCollectionSelect" class="settings-select" style="width: 180px; padding: 6px;">
+                            <option value="rarity_desc">Seltenheit (Seltenste zuerst)</option>
+                            <option value="rarity_asc">Seltenheit (Häufigste zuerst)</option>
+                            <option value="lvl_desc">Level (Höchstes zuerst)</option>
+                            <option value="lvl_asc">Level (Niedrigstes zuerst)</option>
+                            <option value="near_levelup">Nähe zu Level Up</option>
+                        </select>
+                    </div>
+
                     <ul id="collectionList" class="animal-grid">
                         </ul>
                 </section>
@@ -149,6 +177,11 @@
                         </select>
                     </div>
                 </div>
+
+                <div class="stats-card" style="flex-direction: column; text-align: left; gap: 15px;">
+                    <h3>🛠️ Entwickler-Tools</h3>
+                    <button id="addTestRunBtn" class="btn warning">Test-Lauf (22km) hinzufügen</button>
+                </div>
             </div>
         </section>
 
@@ -166,5 +199,6 @@
     <script src="storage.js"></script>
     <script src="tracker.js"></script>
     <script src="app.js"></script>
+    <script src="test.js"></script>
 </body>
 </html>

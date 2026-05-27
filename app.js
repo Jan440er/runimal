@@ -69,14 +69,67 @@ function handleSettingsChange() {
 
 window.updateHomeUI = function() {
     const animals = Storage.getAnimals();
-    animalCountDisplay.textContent = animals.length;
     
+    const playerStats = Storage.getPlayerStats();
+    document.getElementById('playerLevelDisplay').textContent = playerStats.level;
+    const nextLevelXp = playerStats.level * 100;
+    document.getElementById('playerXPDisplay').textContent = `${playerStats.xp}/${nextLevelXp}`;
+    document.getElementById('playerXPBar').style.width = `${(playerStats.xp / nextLevelXp) * 100}%`;
+    
+    animalCountDisplay.textContent = animals.length;
     collectionList.innerHTML = '';
+    
+    const getRarityIndex = (emoji) => {
+        return Storage.RARITIES.findIndex(r => r.animals.includes(emoji));
+    };
+
+    // NEU: Aktuellen Sortier-Wert aus dem Dropdown auslesen
+    const sortSelect = document.getElementById('sortCollectionSelect');
+    const sortValue = sortSelect ? sortSelect.value : 'rarity_desc';
+
+    // NEU: Dynamische Sortierungslogik basierend auf der Auswahl
+    animals.sort((a, b) => {
+        const rA = getRarityIndex(a.id);
+        const rB = getRarityIndex(b.id);
+        
+        if (sortValue === 'rarity_desc') {
+            if (rA !== rB) return rB - rA; // Seltenheit absteigend
+            if (a.level !== b.level) return b.level - a.level;
+            return b.cards - a.cards;
+        } 
+        else if (sortValue === 'rarity_asc') {
+            if (rA !== rB) return rA - rB; // Seltenheit aufsteigend
+            if (a.level !== b.level) return a.level - b.level;
+            return a.cards - b.cards;
+        } 
+        else if (sortValue === 'lvl_desc') {
+            if (a.level !== b.level) return b.level - a.level; // Level absteigend
+            if (rA !== rB) return rB - rA;
+            return b.cards - a.cards;
+        } 
+        else if (sortValue === 'lvl_asc') {
+            if (a.level !== b.level) return a.level - b.level; // Level aufsteigend
+            if (rA !== rB) return rA - rB;
+            return a.cards - b.cards;
+        } 
+        else if (sortValue === 'near_levelup') {
+            // Berechnet das Verhältnis der vorhandenen Karten zu den benötigten Karten
+            const reqA = Storage.getCardsRequired(a.level);
+            const reqB = Storage.getCardsRequired(b.level);
+            const progA = a.cards / reqA;
+            const progB = b.cards / reqB;
+            
+            if (progA !== progB) return progB - progA; // Höchster Fortschritt (Nähe Level-Up) zuerst
+            if (rA !== rB) return rB - rA;
+            return b.level - a.level;
+        }
+        return 0;
+    });
     
     animals.forEach(animal => {
         let rarityObj = null;
         for (let r of Storage.RARITIES) {
-            if (r.animals.includes(animal)) {
+            if (r.animals.includes(animal.id)) {
                 rarityObj = r;
                 break;
             }
@@ -85,15 +138,32 @@ window.updateHomeUI = function() {
         const li = document.createElement('li');
         li.className = 'animal-item';
         
+        const reqCards = Storage.getCardsRequired(animal.level);
+        const canLevelUp = animal.cards >= reqCards;
+        
         if (rarityObj) {
             li.style.border = `2px solid ${rarityObj.color}`;
-            li.innerHTML = `
-                <span class="animal-emoji">${animal}</span>
-                <span class="animal-rarity-label" style="color: ${rarityObj.color}">${rarityObj.name}</span>
-            `;
-        } else {
-            li.textContent = animal;
         }
+        
+        li.innerHTML = `
+            <div class="animal-level-badge">Lvl ${animal.level}</div>
+            <span class="animal-emoji">${animal.id}</span>
+            <span class="animal-rarity-label" style="color: ${rarityObj ? rarityObj.color : '#000'}">
+                ${rarityObj ? rarityObj.name : 'Unbekannt'}
+            </span>
+            <div class="animal-cards-info">
+                Karten: ${animal.cards} / ${reqCards}
+            </div>
+            <button class="btn level-up-btn ${canLevelUp ? 'primary' : ''}" ${canLevelUp ? '' : 'disabled'}>
+                Level Up
+            </button>
+        `;
+        
+        li.querySelector('.level-up-btn').addEventListener('click', () => {
+            if (Storage.levelUpAnimal(animal.id)) {
+                window.updateHomeUI(); 
+            }
+        });
         
         collectionList.appendChild(li);
     });
@@ -172,14 +242,12 @@ window.updateHomeUI = function() {
                             const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                                 maxZoom: 19
                             });
-                            // NEU: Besser erkennbare, farbige, aber dennoch saubere Karte (CartoDB Voyager)
                             const cleanColorLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
                                 maxZoom: 20
                             });
 
                             streetLayer.addTo(subMap);
                             
-                            // NEU: Umschalter in der Historie angepasst ("Klar" statt "Abstrakt")
                             L.control.layers({
                                 "Straßen": streetLayer,
                                 "Satellit": satLayer,
@@ -282,6 +350,9 @@ function handleBoxOpen(boxType) {
         drawnAnimal = drawnRarity.animals[Math.floor(Math.random() * drawnRarity.animals.length)];
     }
 
+    const allKnownAnimals = Storage.getAnimals();
+    const isNew = !allKnownAnimals.find(a => a.id === drawnAnimal);
+
     Storage.saveAnimal(drawnAnimal);
     if(box.runId) {
         Storage.addAnimalToRun(box.runId, drawnAnimal);
@@ -292,6 +363,9 @@ function handleBoxOpen(boxType) {
             <div style="font-size: 3rem;">${drawnAnimal}</div>
             <div style="font-size: 0.9rem; color: ${drawnRarity.color}; margin-top: 5px; font-weight: bold; text-transform: uppercase;">
                 ${drawnRarity.name}
+            </div>
+            <div style="font-size: 0.8rem; font-weight: bold; margin-top: 10px; color: ${isNew ? 'var(--primary)' : '#555'};">
+                ${isNew ? '✨ Neues Tier entdeckt!' : '+1 Karte gesammelt!'}
             </div>
             <div style="font-size: 0.7rem; color: #555; margin-top: 5px;">Aus ${boxConfig.name}</div>
         </div>
@@ -327,6 +401,14 @@ toggleInfoBtn.addEventListener('click', () => {
     } else {
         infoCard.style.display = 'none';
         toggleInfoBtn.textContent = '📊 Wahrscheinlichkeiten ansehen';
+    }
+});
+
+// NEU: Event-Listener für das Umschalten des Sortierungs-Dropdowns anbinden
+document.addEventListener('DOMContentLoaded', () => {
+    const sortSelectEl = document.getElementById('sortCollectionSelect');
+    if (sortSelectEl) {
+        sortSelectEl.addEventListener('change', () => window.updateHomeUI());
     }
 });
 

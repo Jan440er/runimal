@@ -1,3 +1,4 @@
+/* style.css */
 :root {
     --primary: #4CAF50;
     --danger: #f44336;
@@ -128,12 +129,27 @@ h3 { margin-bottom: 5px; color: #555; }
     display: flex;
     justify-content: space-between;
     margin-bottom: 15px;
-    text-align: center;
+    text-align: left; /* NEU: Text Alignment angepasst für XP Bar */
 }
 
 .stat { display: flex; flex-direction: column; flex: 1;}
 .label { font-size: 0.8rem; color: #555; text-transform: uppercase; letter-spacing: 0.5px; }
 .value { font-size: 1.3rem; font-weight: bold; margin-top: 5px; }
+
+/* NEU: Player XP Bar Styling */
+.xp-bar-bg {
+    flex: 1;
+    height: 12px;
+    background: #e0e0e0;
+    border-radius: 6px;
+    overflow: hidden;
+}
+.xp-bar-fill {
+    height: 100%;
+    background: var(--primary);
+    width: 0%;
+    transition: width 0.4s ease-out;
+}
 
 .settings-group {
     display: flex;
@@ -180,7 +196,7 @@ h3 { margin-bottom: 5px; color: #555; }
     font-weight: bold;
     color: white;
     cursor: pointer;
-    transition: transform 0.1s, opacity 0.2s;
+    transition: transform 0.1s, opacity 0.2s, background-color 0.2s; /* NEU */
     box-shadow: 0 4px 15px rgba(0,0,0,0.2);
 }
 .btn:active { transform: scale(0.95); }
@@ -188,7 +204,7 @@ h3 { margin-bottom: 5px; color: #555; }
 .btn.primary { background-color: var(--primary); }
 .btn.danger { background-color: var(--danger); }
 .btn.warning { background-color: var(--warning); } 
-.btn.small { padding: 8px 12px; font-size: 0.9rem; flex: none; } /* NEU: Kleiner Button fürs Inventar */
+.btn.small { padding: 8px 12px; font-size: 0.9rem; flex: none; } 
 
 .recent-runs {
     margin-bottom: 30px;
@@ -256,27 +272,34 @@ h3 { margin-bottom: 5px; color: #555; }
 
 h2 { font-size: 1.2rem; margin-bottom: 15px; border-bottom: 1px solid #ccc; padding-bottom: 5px; color: #444; }
 
-.animal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 10px; list-style: none; }
-.animal-item { background: white; padding: 10px 5px; border-radius: 12px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); animation: popIn 0.3s ease-out; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.animal-emoji { font-size: 1.8rem; margin-bottom: 5px; }
-.animal-rarity-label { font-size: 0.55rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; } /* NEU */
+/* NEU: Anpassung des Tier-Grids und der Items für Karten und Leveling */
+.animal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 15px; list-style: none; }
+.animal-item { position: relative; background: white; padding: 15px 10px; border-radius: 12px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); animation: popIn 0.3s ease-out; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.animal-emoji { font-size: 2.2rem; margin-bottom: 5px; }
+.animal-rarity-label { font-size: 0.65rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; } 
+
+/* NEU: UI Elemente für das neue Leveling-System */
+.animal-level-badge { position: absolute; top: -10px; right: -10px; background: var(--warning); color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 2; }
+.animal-cards-info { font-size: 0.8rem; color: #666; margin: 8px 0; font-weight: bold; background: #f0f0f0; padding: 3px 8px; border-radius: 8px; width: 100%; }
+.level-up-btn { padding: 8px; font-size: 0.8rem; width: 100%; border-radius: 8px; flex: none; background-color: #ddd; color: #888; box-shadow: none; margin-top: auto; }
+.level-up-btn.primary { background-color: var(--primary); color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.2); animation: pulse 1.5s infinite; }
+
 .animal-map-marker { background: white; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.3); text-align: center; line-height: 30px; font-size: 20px; }
 
 .box-result { text-align: center; margin-top: 20px; min-height: 120px; }
 
-/* NEU: Styling für die Inventar-Liste (Boxtypen) */
 .inventory-list { list-style: none; width: 100%; }
 .inventory-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; }
 .inventory-item:last-child { border-bottom: none; }
 .inventory-info { display: flex; align-items: center; gap: 10px; text-align: left; }
 
-/* NEU: Styling für die Wahrscheinlichkeitstabelle */
 .prob-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; background: #fff; text-align: center; }
 .prob-table th, .prob-table td { border: 1px solid #ddd; padding: 8px 4px; }
 .prob-table th { background-color: #f4f7f6; color: #333; font-weight: bold; }
 .prob-table td:first-child { text-align: left; font-weight: bold; }
 
 @keyframes popIn { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+@keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } } /* NEU */
 
 .bottom-nav {
     position: fixed;
